@@ -21,6 +21,14 @@ export class AppMenu {
     ngOnInit() {
         this.model = [
             {
+                label: 'Классическая гармония',
+                items: [
+                    { label: 'Теория', icon: 'pi pi-fw pi-id-card', routerLink: ['/uikit/formlayout'] },
+                    { label: 'Упражнения', icon: 'pi pi-fw pi-check-square', routerLink: ['/uikit/input'] },
+                    { label: 'Тренажер', icon: 'pi pi-fw pi-mobile', class: 'rotated-icon', routerLink: ['/uikit/button'] }
+                ]
+            },
+            {
                 label: 'Home',
                 items: [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', routerLink: ['/'] }]
             },

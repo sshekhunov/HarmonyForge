@@ -3,17 +3,15 @@ import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { AppTopbar } from './app.topbar';
-import { AppSidebar } from './app.sidebar';
 import { AppFooter } from './app.footer';
 import { LayoutService } from '../service/layout.service';
 
 @Component({
     selector: 'app-layout',
     standalone: true,
-    imports: [CommonModule, AppTopbar, AppSidebar, RouterModule, AppFooter],
-    template: `<div class="layout-wrapper" [ngClass]="containerClass">
+    imports: [CommonModule, AppTopbar, RouterModule, AppFooter],
+    template: `<div class="layout-wrapper" [ngClass]="'overlay'">
         <app-topbar></app-topbar>
-        <app-sidebar></app-sidebar>
         <div class="layout-main-container">
             <div class="layout-main">
                 <router-outlet></router-outlet>
@@ -27,8 +25,6 @@ export class AppLayout {
     overlayMenuOpenSubscription: Subscription;
 
     menuOutsideClickListener: any;
-
-    @ViewChild(AppSidebar) appSidebar!: AppSidebar;
 
     @ViewChild(AppTopbar) appTopBar!: AppTopbar;
 
@@ -87,16 +83,6 @@ export class AppLayout {
         } else {
             document.body.className = document.body.className.replace(new RegExp('(^|\\b)' + 'blocked-scroll'.split(' ').join('|') + '(\\b|$)', 'gi'), ' ');
         }
-    }
-
-    get containerClass() {
-        return {
-            'layout-overlay': this.layoutService.layoutConfig().menuMode === 'overlay',
-            'layout-static': this.layoutService.layoutConfig().menuMode === 'static',
-            'layout-static-inactive': this.layoutService.layoutState().staticMenuDesktopInactive && this.layoutService.layoutConfig().menuMode === 'static',
-            'layout-overlay-active': this.layoutService.layoutState().overlayMenuActive,
-            'layout-mobile-active': this.layoutService.layoutState().staticMenuMobileActive
-        };
     }
 
     ngOnDestroy() {
