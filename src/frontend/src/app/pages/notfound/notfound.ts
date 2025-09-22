@@ -1,13 +1,12 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
-import { AppFloatingConfigurator } from '../../layout/component/app.floatingconfigurator';
 
 @Component({
     selector: 'app-notfound',
     standalone: true,
-    imports: [RouterModule, AppFloatingConfigurator, ButtonModule],
-    template: ` <app-floating-configurator />
+    imports: [RouterModule, ButtonModule],
+    template: `
         <div class="flex items-center justify-center min-h-screen overflow-hidden">
             <div class="flex flex-col items-center justify-center">
                 <div style="border-radius: 56px; padding: 0.3rem; background: linear-gradient(180deg, color-mix(in srgb, var(--primary-color), transparent 60%) 10%, var(--surface-ground) 30%)">
