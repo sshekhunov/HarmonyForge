@@ -1,3 +1,22 @@
 <div class="card">
-    <!--lib-osmd-renderer source="{{musicXml}}"></lib-osmd-renderer-->
+    <p-fileupload name="myfile[]" chooseLabel="Загрузить" uploadLabel="Проверить" cancelLabel="Отменить" chooseIcon="pi pi-upload" [multiple]="false"
+        maxFileSize="1000000"
+        (onSelect)="onSelectedFiles($event)"
+        (onClear)="onClear()">
+
+        <ng-template #empty>
+            <div class="flex items-center justify-center flex-col">
+                <i class="pi pi-cloud-upload !border-2 !rounded-full !p-8 !text-4xl !text-muted-color"></i>
+                <p class="mt-6 mb-0">Перетащите файл в эту область</p>
+            </div>
+        </ng-template>
+    </p-fileupload>
 </div>
+
+@if (musicXml != '')
+{
+<div class="card">
+    <lib-osmd-renderer [source]="musicXml"></lib-osmd-renderer>
+
+</div>
+}

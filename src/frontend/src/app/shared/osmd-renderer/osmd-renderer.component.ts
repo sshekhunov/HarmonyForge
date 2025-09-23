@@ -3,6 +3,7 @@ import {Guid} from 'guid-typescript';
 import {OpenSheetMusicDisplay} from 'opensheetmusicdisplay';
 
 @Component({
+  standalone: true,
   selector: 'lib-osmd-renderer',
   templateUrl: './osmd-renderer.component.html',
   styleUrls: ['./osmd-renderer.component.css']
