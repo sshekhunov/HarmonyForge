@@ -22,6 +22,8 @@
         "@primeuix/themes": "^1.2.1",
         "@tailwindcss/postcss": "^4.1.11",
         "chart.js": "4.4.2",
+        "guid-typescript": "^1.0.9",
+        "opensheetmusicdisplay": "^1.9.2",
         "primeclt": "^0.1.5",
         "primeicons": "^7.0.0",
         "primeng": "^20",
