@@ -1,19 +1,24 @@
 import { Component } from '@angular/core';
 import { OsmdRendererModule } from 'src/app/shared/osmd-renderer/osmd-renderer.module';
 import { FileUpload } from 'primeng/fileupload';
+import { PanelModule } from 'primeng/panel';
 
 @Component({
     selector: 'app-training',
     standalone: true,
     templateUrl: './training.component.html',
-    imports: [OsmdRendererModule, FileUpload]
+    imports: [OsmdRendererModule, FileUpload, PanelModule]
 })
 export class Training {
 
     musicXml = '';
     files:any[] = [];
 
+    checkResult = '';
+
     ngOnInit(): void {
+        this.musicXml = '';
+        this.checkResult = '';
     }
 
     onSelectedFiles(event: { currentFiles: any[]; }) {
@@ -31,6 +36,11 @@ export class Training {
     onClear() {
         this.files = [];
         this.musicXml = '';
+        this.checkResult = '';
+    }
+
+    onUpload(_event: unknown) {
+        this.checkResult = 'test';
     }
 
 }
