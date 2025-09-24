@@ -1,0 +1,52 @@
+<div class="card">
+    <p-fileupload name="musicScores[]"
+        chooseLabel="Загрузить" uploadLabel="Проверить" cancelLabel="Отменить"
+        chooseIcon="pi pi-upload"
+        uploadIcon="pi pi-sparkles"
+        [multiple]="false"
+        maxFileSize="1000000"
+         [customUpload]="true"
+         (uploadHandler)="onUpload($event)"
+         (onSelect)="onSelectedFiles($event)"
+         (onClear)="onClear()">
+
+        <ng-template #empty>
+            <div class="flex items-center justify-center flex-col">
+                <i class="pi pi-cloud-upload !border-2 !rounded-full !p-8 !text-4xl !text-muted-color"></i>
+                <p class="mt-6 mb-0">Перетащите файл в формате MusicXml для проверки гармонии</p>
+            </div>
+        </ng-template>
+        <ng-template #content>
+
+        </ng-template>
+    </p-fileupload>
+</div>
+
+@if (musicXml != '')
+{
+<div class="card">
+    <lib-osmd-renderer [source]="musicXml"></lib-osmd-renderer>
+
+</div>
+}
+
+@if (checkResult != '')
+{
+<div class="card">
+    <p-panel header="Перекрещивание голосов" [toggleable]="true">
+        <p class="m-0">
+            Описание правила...
+        </p>
+    </p-panel>
+    <p-panel header="Большие скачки в басу" [toggleable]="true">
+        <p class="m-0">
+            Описание правила...
+        </p>
+    </p-panel>
+    <p-panel header="Параллельные квинты" [toggleable]="true">
+        <p class="m-0">
+            Описание правила...
+        </p>
+    </p-panel>
+</div>
+}

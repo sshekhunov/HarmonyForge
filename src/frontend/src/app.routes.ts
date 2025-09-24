@@ -3,6 +3,7 @@ import { AppLayout } from './app/layout/component/app.layout';
 import { Notfound } from './app/pages/notfound/notfound';
 import {Theory} from './app/pages/theory/theory.component';
 import { Empty } from './app/pages/empty/empty';
+import { Training } from '@/pages/training/training.component';
 
 export const appRoutes: Routes = [
     {
@@ -10,7 +11,7 @@ export const appRoutes: Routes = [
         component: AppLayout,
         children: [
             { path: '', component: Empty },
-            { path: 'analysis', component: Empty },
+            { path: 'training', component: Training },
             { path: 'theory', component: Theory },
         ]
     },
