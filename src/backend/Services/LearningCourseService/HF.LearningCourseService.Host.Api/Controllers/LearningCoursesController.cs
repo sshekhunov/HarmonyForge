@@ -1,6 +1,5 @@
-using HF.LearningCourseService.Core.Domain.Entities;
-using HF.LearningCourseService.Host.Api.Models;
-using HF.LearningCourseService.Infrastructure.DataAccess.Repositories;
+using HF.LearningCourseService.Core.Domain.DTO;
+using HF.LearningCourseService.Core.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HF.LearningCourseService.Host.Api.Controllers
@@ -9,24 +8,24 @@ namespace HF.LearningCourseService.Host.Api.Controllers
 	[Route("api/[controller]")]
 	public class LearningCoursesController : ControllerBase
 	{
-		private readonly LearningCourseRepository _repository;
+		private readonly ILearningCourseService _service;
 
-		public LearningCoursesController(LearningCourseRepository repository)
+		public LearningCoursesController(ILearningCourseService service)
 		{
-			_repository = repository;
+			_service = service;
 		}
 
 		[HttpGet]
-		public async Task<IActionResult> GetAll()
+		public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
 		{
-			var items = await _repository.GetAllAsync();
+			var items = await _service.GetAllAsync(cancellationToken);
 			return Ok(items);
 		}
 
 		[HttpGet("{id:guid}")]
 		public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
 		{
-			var item = await _repository.GetByIdAsync(id, cancellationToken);
+			var item = await _service.GetByIdAsync(id, cancellationToken);
 			if (item is null)
 			{
 				return NotFound();
@@ -37,21 +36,21 @@ namespace HF.LearningCourseService.Host.Api.Controllers
 		[HttpPost]
 		public async Task<IActionResult> Create([FromBody] CreateCourseRequest request, CancellationToken cancellationToken)
 		{
-			var entity = new LearningCourse
-			{
-				Id = Guid.NewGuid(),
-				Title = request.Title,
-				Description = request.Description
-			};
+			var Id = await _service.AddAsync(request, cancellationToken);
+			return CreatedAtAction(nameof(GetById), new { id = Id }, null);
+		}
 
-			await _repository.AddAsync(entity, cancellationToken);
-			return CreatedAtAction(nameof(GetById), new { id = entity.Id }, entity);
+		[HttpPut()]
+		public async Task<IActionResult> Update([FromBody] UpdateCourseRequest request, CancellationToken cancellationToken)
+		{
+            await _service.UpdateAsync(request, cancellationToken);
+            return NoContent();
 		}
 
 		[HttpDelete("{id:guid}")]
 		public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
 		{
-			await _repository.DeleteAsync(id, cancellationToken);
+			await _service.DeleteAsync(id, cancellationToken);
 			return NoContent();
 		}
 	}

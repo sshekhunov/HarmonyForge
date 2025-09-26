@@ -1,8 +1,9 @@
 
+using HF.LearningCourseService.Core.Domain.Interfaces.Repositories;
+using HF.LearningCourseService.Core.Domain.Interfaces.Services;
 using HF.LearningCourseService.Infrastructure.DataAccess;
-using MongoDB.EntityFrameworkCore.Extensions;
-using Microsoft.EntityFrameworkCore;
 using HF.LearningCourseService.Infrastructure.DataAccess.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace HF.LearningCourseService.Host.Api
 {
@@ -34,7 +35,8 @@ namespace HF.LearningCourseService.Host.Api
             builder.Services.AddDbContext<LearningCourseDbContext>(options =>
                 options.UseMongoDB(mongoConnectionString!, mongoDatabase!));
 
-            builder.Services.AddScoped<LearningCourseRepository>();
+            builder.Services.AddScoped<ILearningCourseRepository, LearningCourseRepository>();
+            builder.Services.AddScoped<ILearningCourseService, Core.Application.Services.LearningCourseService>();
 
             var app = builder.Build();
 
