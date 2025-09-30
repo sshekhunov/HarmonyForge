@@ -1,4 +1,5 @@
-﻿using HF.LearningCourseService.Core.Domain.DTO;
+﻿using HF.LearningCourseService.Core.Application.Mappers;
+using HF.LearningCourseService.Core.Domain.DTO;
 using HF.LearningCourseService.Core.Domain.Entities;
 using HF.LearningCourseService.Core.Domain.Interfaces.Repositories;
 using HF.LearningCourseService.Core.Domain.Interfaces.Services;
@@ -14,44 +15,44 @@ public class LearningCourseService: ILearningCourseService
         _repository = repository;
     }
 
-    public async Task<IList<LearningCourse>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IList<LearningCourseDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        return await _repository.GetAllAsync(cancellationToken);
+        var entities = await _repository.GetAllAsync(cancellationToken);
+        return LearningCourseMapper.ToDtoList(entities);
     }
 
-    public async Task<LearningCourse?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<LearningCourseDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _repository.GetByIdAsync(id, cancellationToken);
+        var entity = await _repository.GetByIdAsync(id, cancellationToken);
+        return entity != null ? LearningCourseMapper.ToDto(entity) : null;
     }
 
-    public async Task<Guid> AddAsync(CreateCourseRequest request, CancellationToken cancellationToken = default)
+    public async Task<Guid> AddAsync(CreateCourseDto request, CancellationToken cancellationToken = default)
     {
-        var course = new LearningCourse
-        {
-            Id = Guid.NewGuid(),
-            Title = request.Title,
-            Description = request.Description
-        };
-
+        var course = LearningCourseMapper.ToEntity(request);
         await _repository.AddAsync(course, cancellationToken);
         return course.Id;
     }
 
-    public async Task UpdateAsync(UpdateCourseRequest request, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(UpdateCourseDto request, CancellationToken cancellationToken = default)
     {
         var course = await _repository.GetByIdAsync(request.Id, cancellationToken);
         if (course is null)
         {
-            throw new Exception("Course not found");
+            throw new InvalidOperationException($"Learning course with ID {request.Id} not found");
         }
+        
+        course.Code = request.Code;
         course.Title = request.Title;
         course.Description = request.Description;
+        course.ClearModules();
+        course.AddModules(request.Modules.Select(LearningModuleMapper.ToEntity).ToList());
 
         await _repository.UpdateAsync(course, cancellationToken);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await _repository.DeleteAsync(id,cancellationToken);
+        await _repository.DeleteAsync(id, cancellationToken);
     }
 }
