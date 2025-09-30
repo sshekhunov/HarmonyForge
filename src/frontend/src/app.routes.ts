@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { AppLayout } from './app/layout/component/app.layout';
 import { Notfound } from './app/pages/notfound/notfound';
-import {Theory} from './app/pages/theory/theory.component';
+import {TheoryComponent} from './app/pages/theory/theory.component';
 import { Empty } from './app/pages/empty/empty';
 import { Training } from '@/pages/training/training.component';
 
@@ -12,7 +12,7 @@ export const appRoutes: Routes = [
         children: [
             { path: '', component: Empty },
             { path: 'training', component: Training },
-            { path: 'theory', component: Theory },
+            { path: 'theory', component: TheoryComponent },
         ]
     },
     { path: 'notfound', component: Notfound },

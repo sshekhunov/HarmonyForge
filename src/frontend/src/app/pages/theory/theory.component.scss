@@ -1,0 +1,378 @@
+// Main container
+.theory-container {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+// Page header
+.page-header {
+    margin-bottom: 2rem;
+    text-align: center;
+    
+    .header-content {
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .page-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-color-secondary);
+            margin: 0;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    }
+}
+
+// Loading, Error, and Empty states
+.loading-container,
+.error-container,
+.empty-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    
+    .loading-content,
+    .error-content,
+    .empty-content {
+        text-align: center;
+        
+        .loading-text {
+            margin-top: 1rem;
+            color: var(--text-color-secondary);
+        }
+        
+        .error-icon,
+        .empty-icon {
+            font-size: 4rem;
+            color: var(--text-color-secondary);
+            margin-bottom: 1rem;
+        }
+        
+        h3 {
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        p {
+            color: var(--text-color-secondary);
+            margin-bottom: 1.5rem;
+        }
+    }
+}
+
+// Courses section
+.courses-section {
+    .courses-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        
+        .courses-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin: 0;
+        }
+        
+        .courses-count {
+            background: var(--primary-50);
+            color: var(--primary-600);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+    }
+}
+
+// Courses grid
+.courses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 1.5rem;
+    
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
+// Course card styling
+.course-item {
+    transition: all 0.3s ease;
+    
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+}
+
+// Course header
+.course-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.5rem 1.5rem 0 1.5rem;
+    
+    .course-icon {
+        background: var(--primary-50);
+        color: var(--primary-600);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 3.5rem;
+        height: 3.5rem;
+        flex-shrink: 0;
+        font-size: 1.5rem;
+    }
+    
+    .course-info {
+        flex: 1;
+        
+        .course-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin: 0 0 0.25rem 0;
+            line-height: 1.3;
+        }
+        
+        .course-code {
+            font-size: 0.875rem;
+            color: var(--text-color-secondary);
+            margin: 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+    }
+}
+
+// Course content
+.course-content {
+    padding: 1.5rem;
+    
+    .course-description {
+        color: var(--text-color-secondary);
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+}
+
+// Course statistics
+.course-stats {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-color-secondary);
+        font-size: 0.875rem;
+        
+        .pi {
+            color: var(--primary-500);
+            font-size: 0.875rem;
+        }
+    }
+}
+
+// Course tags
+.course-tags {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+// Module preview
+.module-preview {
+    .module-preview-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-color);
+        margin: 0 0 0.75rem 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .module-list {
+        .module-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+            font-size: 0.875rem;
+            color: var(--text-color-secondary);
+            border-bottom: 1px solid var(--surface-border);
+            
+            &:last-child {
+                border-bottom: none;
+            }
+            
+            &.more-modules {
+                color: var(--primary-500);
+                font-style: italic;
+            }
+            
+            .pi {
+                color: var(--primary-500);
+                font-size: 0.75rem;
+            }
+            
+            .module-name {
+                flex: 1;
+            }
+            
+            .module-items-count {
+                color: var(--text-color-secondary);
+                font-size: 0.75rem;
+            }
+        }
+    }
+}
+
+// Course footer
+.course-footer {
+    padding: 0 1.5rem 1.5rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+// Global PrimeNG component styling
+:host ::ng-deep {
+    .p-card {
+        border-radius: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        border: 1px solid var(--surface-border);
+        overflow: hidden;
+        transition: all 0.3s ease;
+        
+        &:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .p-card-header {
+            padding: 0;
+            border-bottom: none;
+        }
+        
+        .p-card-content {
+            padding: 0;
+        }
+        
+        .p-card-footer {
+            padding: 0;
+            border-top: 1px solid var(--surface-border);
+            background: var(--surface-50);
+        }
+    }
+    
+    .p-button {
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        padding: 0.75rem 1.5rem;
+        
+        &.p-button-primary {
+            background: var(--primary-500);
+            border-color: var(--primary-500);
+            
+            &:hover {
+                background: var(--primary-600);
+                border-color: var(--primary-600);
+                transform: translateY(-1px);
+            }
+        }
+        
+        &.p-button-outlined {
+            &:hover {
+                transform: translateY(-1px);
+            }
+        }
+    }
+    
+    .p-tag {
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        padding: 0.25rem 0.75rem;
+    }
+    
+    .p-progressspinner {
+        .p-progressspinner-circle {
+            stroke: var(--primary-color);
+        }
+    }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+    .theory-container {
+        padding: 1rem;
+    }
+    
+    .page-header {
+        .header-content {
+            .page-title {
+                font-size: 2rem;
+            }
+            
+            .page-subtitle {
+                font-size: 1rem;
+            }
+        }
+    }
+    
+    .courses-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .course-header {
+        padding: 1rem 1rem 0 1rem;
+        
+        .course-icon {
+            width: 3rem;
+            height: 3rem;
+            font-size: 1.25rem;
+        }
+        
+        .course-info {
+            .course-title {
+                font-size: 1.1rem;
+            }
+        }
+    }
+    
+    .course-content {
+        padding: 1rem;
+    }
+    
+    .course-stats {
+        gap: 1rem;
+        
+        .stat-item {
+            font-size: 0.8rem;
+        }
+    }
+    
+    .course-footer {
+        padding: 0 1rem 1rem 1rem;
+    }
+}
