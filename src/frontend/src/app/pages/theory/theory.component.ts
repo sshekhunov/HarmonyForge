@@ -88,4 +88,22 @@ export class TheoryComponent implements OnInit {
         const minutes = estimatedMinutes % 60;
         return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
     }
+
+    getDifficultySeverity(course: LearningCourse): string {
+        const difficulty = this.getCourseDifficulty(course);
+        switch (difficulty) {
+            case 'Beginner': return 'success';
+            case 'Intermediate': return 'warning';
+            case 'Advanced': return 'danger';
+            default: return 'info';
+        }
+    }
+
+    trackByCourseId(index: number, course: LearningCourse): string {
+        return course.id;
+    }
+
+    trackByModuleTitle(index: number, module: any): string {
+        return module.title;
+    }
 }
