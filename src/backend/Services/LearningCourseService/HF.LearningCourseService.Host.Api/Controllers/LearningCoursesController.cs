@@ -17,11 +17,6 @@ namespace HF.LearningCourseService.Host.Api.Controllers
 			_logger = logger;
 		}
 
-		/// <summary>
-		/// Gets all learning courses
-		/// </summary>
-		/// <param name="cancellationToken">Cancellation token</param>
-		/// <returns>List of learning courses</returns>
 		[HttpGet]
 		[ProducesResponseType(typeof(IList<LearningCourseDto>), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -44,12 +39,6 @@ namespace HF.LearningCourseService.Host.Api.Controllers
 			}
 		}
 
-		/// <summary>
-		/// Gets a learning course by ID
-		/// </summary>
-		/// <param name="id">Course ID</param>
-		/// <param name="cancellationToken">Cancellation token</param>
-		/// <returns>Learning course or 404 if not found</returns>
 		[HttpGet("{id:guid}")]
 		[ProducesResponseType(typeof(LearningCourseDto), StatusCodes.Status200OK)]
 		[ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -83,12 +72,6 @@ namespace HF.LearningCourseService.Host.Api.Controllers
 			}
 		}
 
-		/// <summary>
-		/// Creates a new learning course
-		/// </summary>
-		/// <param name="request">Course creation request</param>
-		/// <param name="cancellationToken">Cancellation token</param>
-		/// <returns>Created course location or error details</returns>
 		[HttpPost]
 		[ProducesResponseType(StatusCodes.Status201Created)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -122,12 +105,6 @@ namespace HF.LearningCourseService.Host.Api.Controllers
 			}
 		}
 
-		/// <summary>
-		/// Updates an existing learning course
-		/// </summary>
-		/// <param name="request">Course update request</param>
-		/// <param name="cancellationToken">Cancellation token</param>
-		/// <returns>No content on success or error details</returns>
 		[HttpPut()]
 		[ProducesResponseType(StatusCodes.Status204NoContent)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -167,12 +144,6 @@ namespace HF.LearningCourseService.Host.Api.Controllers
 			}
 		}
 
-		/// <summary>
-		/// Deletes a learning course by ID
-		/// </summary>
-		/// <param name="id">Course ID</param>
-		/// <param name="cancellationToken">Cancellation token</param>
-		/// <returns>No content on success or error details</returns>
 		[HttpDelete("{id:guid}")]
 		[ProducesResponseType(StatusCodes.Status204NoContent)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]

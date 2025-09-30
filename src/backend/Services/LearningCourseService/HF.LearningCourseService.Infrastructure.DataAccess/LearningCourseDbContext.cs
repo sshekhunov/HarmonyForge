@@ -17,8 +17,10 @@ namespace HF.LearningCourseService.Infrastructure.DataAccess
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			modelBuilder.Entity<LearningCourse>().ToCollection("learning_courses");
-			modelBuilder.Entity<LearningArticle>().ToCollection("learning_articles");			
-		}
+			modelBuilder.Entity<LearningArticle>().ToCollection("learning_articles");
+            modelBuilder.Entity<LearningArticle>().HasIndex(a => a.LearningModuleId).IsUnique();
+
+        }
 	}
 }
 
