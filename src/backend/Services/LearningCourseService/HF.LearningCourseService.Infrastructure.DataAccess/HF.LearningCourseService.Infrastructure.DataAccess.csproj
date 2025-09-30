@@ -6,4 +6,14 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MongoDB.EntityFrameworkCore" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HF.LearningCourseService.Core.Domain.Interfaces\HF.LearningCourseService.Core.Domain.Interfaces.csproj" />
+    <ProjectReference Include="..\HF.LearningCourseService.Core.Domain\HF.LearningCourseService.Core.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

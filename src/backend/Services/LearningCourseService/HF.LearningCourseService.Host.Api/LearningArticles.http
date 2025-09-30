@@ -1,0 +1,134 @@
+### LearningArticle API Testing
+### Base URL: http://localhost:5085
+
+@baseUrl = http://localhost:5085
+@articleId = 00000000-0000-0000-0000-000000000000
+@moduleId = 00000000-0000-0000-0000-000000000001
+
+### 1. Get All Learning Articles
+GET {{baseUrl}}/api/learningarticles
+
+### 2. Get Learning Article by ID
+GET {{baseUrl}}/api/learningarticles/{{articleId}}
+
+### 3. Get Learning Articles by Module ID
+GET {{baseUrl}}/api/learningarticles/module/{{moduleId}}
+
+### 4. Create Simple Learning Article
+POST {{baseUrl}}/api/learningarticles
+Content-Type: application/json
+
+{
+  "learningModuleId": "{{moduleId}}",
+  "contentItems": []
+}
+
+### 5. Create Learning Article with Content
+POST {{baseUrl}}/api/learningarticles
+Content-Type: application/json
+
+{
+  "learningModuleId": "{{moduleId}}",
+  "contentItems": [
+    {
+      "content": "This is the introduction to the article.",
+      "sectionBlockNumber": 1
+    },
+    {
+      "content": "This is the main content section with detailed information.",
+      "sectionBlockNumber": 2
+    },
+    {
+      "content": "This is the conclusion section.",
+      "sectionBlockNumber": 3
+    }
+  ]
+}
+
+### 6. Update Learning Article
+PUT {{baseUrl}}/api/learningarticles
+Content-Type: application/json
+
+{
+  "id": "{{articleId}}",
+  "learningModuleId": "{{moduleId}}",
+  "contentItems": [
+    {
+      "content": "Updated introduction content.",
+      "sectionBlockNumber": 1
+    },
+    {
+      "content": "Updated main content with new information.",
+      "sectionBlockNumber": 2
+    }
+  ]
+}
+
+### 7. Delete Learning Article
+DELETE {{baseUrl}}/api/learningarticles/{{articleId}}
+
+### 8. Error Testing - Empty Module ID
+POST {{baseUrl}}/api/learningarticles
+Content-Type: application/json
+
+{
+  "learningModuleId": "00000000-0000-0000-0000-000000000000",
+  "contentItems": []
+}
+
+### 9. Error Testing - Invalid Content
+POST {{baseUrl}}/api/learningarticles
+Content-Type: application/json
+
+{
+  "learningModuleId": "{{moduleId}}",
+  "contentItems": [
+    {
+      "content": "",
+      "sectionBlockNumber": 1
+    }
+  ]
+}
+
+### 10. Error Testing - Invalid Section Block Number
+POST {{baseUrl}}/api/learningarticles
+Content-Type: application/json
+
+{
+  "learningModuleId": "{{moduleId}}",
+  "contentItems": [
+    {
+      "content": "Valid content",
+      "sectionBlockNumber": -1
+    }
+  ]
+}
+
+### 11. Error Testing - Duplicate Module ID (Should return 409 Conflict)
+POST {{baseUrl}}/api/learningarticles
+Content-Type: application/json
+
+{
+  "learningModuleId": "{{moduleId}}",
+  "contentItems": [
+    {
+      "content": "Another article for the same module",
+      "sectionBlockNumber": 1
+    }
+  ]
+}
+
+### 12. Error Testing - Update to Existing Module ID (Should return 409 Conflict)
+PUT {{baseUrl}}/api/learningarticles
+Content-Type: application/json
+
+{
+  "id": "{{articleId}}",
+  "learningModuleId": "{{moduleId}}",
+  "contentItems": [
+    {
+      "content": "Updated content",
+      "sectionBlockNumber": 1
+    }
+  ]
+}
