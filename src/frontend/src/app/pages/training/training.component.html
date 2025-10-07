@@ -1,4 +1,18 @@
-<div class="card">
+<div class="training-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        Тренажер гармонизации мелодии
+      </h1>
+      <p class="page-subtitle">
+        Загрузите музыкальную партитуру в формате MusicXML для анализа и проверки правил гармонии
+      </p>
+    </div>
+  </div>
+
+  <!-- File Upload Section -->
+  <div class="card">
     <p-fileupload name="musicScores[]"
         chooseLabel="Загрузить" uploadLabel="Проверить" cancelLabel="Отменить"
         chooseIcon="pi pi-upload"
@@ -13,7 +27,7 @@
         <ng-template #empty>
             <div class="flex items-center justify-center flex-col">
                 <i class="pi pi-cloud-upload !border-2 !rounded-full !p-8 !text-4xl !text-muted-color"></i>
-                <p class="mt-6 mb-0">Перетащите файл в формате MusicXml для проверки гармонии</p>
+                <p class="mt-6 mb-0">Перетащите файл в формате MusicXml</p>
             </div>
         </ng-template>
         <ng-template #content>
@@ -50,3 +64,4 @@
     </p-panel>
 </div>
 }
+</div>

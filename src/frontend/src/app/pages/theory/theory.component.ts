@@ -21,7 +21,7 @@ export class TheoryComponent implements OnInit {
     courses: LearningCourse[] = [];
     loading = false;
     error: string | null = null;
-    
+
     // Articles view state
     showArticles = false;
     selectedCourse: LearningCourse | null = null;
@@ -42,14 +42,14 @@ export class TheoryComponent implements OnInit {
     loadCourses() {
         this.loading = true;
         this.error = null;
-        
+
         this.learningCourseService.getAllCourses().subscribe({
             next: (courses) => {
                 this.courses = courses;
                 this.loading = false;
             },
             error: (error) => {
-                this.error = 'Failed to load courses. Please try again later.';
+                this.error = 'Не удалось загрузить курсы. Пожалуйста, попробуйте позже.';
                 this.loading = false;
                 console.error('Error loading courses:', error);
             }
@@ -82,15 +82,15 @@ export class TheoryComponent implements OnInit {
                                 learningModuleId: module.title,
                                 contentItems: [
                                     {
-                                        content: `This is the introduction content for ${module.title}. Learn the fundamentals and build a strong foundation.`,
+                                        content: `Это вводный контент для ${module.title}. Изучите основы и заложите прочный фундамент.`,
                                         sectionBlockNumber: 1
                                     },
                                     {
-                                        content: `This is the main content section for ${module.title}. Dive deeper into the concepts and practical applications.`,
+                                        content: `Это основной раздел контента для ${module.title}. Погрузитесь глубже в концепции и практические применения.`,
                                         sectionBlockNumber: 2
                                     },
                                     {
-                                        content: `This is the conclusion section for ${module.title}. Review what you've learned and prepare for the next steps.`,
+                                        content: `Это заключительный раздел для ${module.title}. Повторите изученное и подготовьтесь к следующим шагам.`,
                                         sectionBlockNumber: 3
                                     }
                                 ]
@@ -108,7 +108,7 @@ export class TheoryComponent implements OnInit {
                 }
             },
             error: (error) => {
-                this.articlesError = 'Failed to load articles. Please try again later.';
+                this.articlesError = 'Не удалось загрузить статьи. Пожалуйста, попробуйте позже.';
                 this.articlesLoading = false;
                 console.error('Error loading articles:', error);
             }
@@ -124,7 +124,7 @@ export class TheoryComponent implements OnInit {
 
     getModulesWithArticles() {
         if (!this.selectedCourse) return [];
-        
+
         return this.selectedCourse.modules.map(module => ({
             ...module,
             articles: this.articlesByModule[module.title] || []
@@ -162,37 +162,20 @@ export class TheoryComponent implements OnInit {
 
     getModuleTypeLabel(type: number): string {
         switch (type) {
-            case 0: return 'Article';
-            case 1: return 'Exercise';
-            case 2: return 'Test';
-            default: return 'Unknown';
+            case 0: return 'Статья';
+            case 1: return 'Упражнение';
+            case 2: return 'Тест';
+            default: return 'Неизвестно';
         }
-    }
-
-    getCourseDifficulty(course: LearningCourse): string {
-        const totalItems = this.getTotalItems(course);
-        if (totalItems <= 5) return 'Beginner';
-        if (totalItems <= 15) return 'Intermediate';
-        return 'Advanced';
     }
 
     getEstimatedDuration(course: LearningCourse): string {
         const totalItems = this.getTotalItems(course);
         const estimatedMinutes = totalItems * 5; // 5 minutes per item
-        if (estimatedMinutes < 60) return `${estimatedMinutes} min`;
+        if (estimatedMinutes < 60) return `${estimatedMinutes} мин`;
         const hours = Math.floor(estimatedMinutes / 60);
         const minutes = estimatedMinutes % 60;
-        return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-    }
-
-    getDifficultySeverity(course: LearningCourse): string {
-        const difficulty = this.getCourseDifficulty(course);
-        switch (difficulty) {
-            case 'Beginner': return 'success';
-            case 'Intermediate': return 'warning';
-            case 'Advanced': return 'danger';
-            default: return 'info';
-        }
+        return minutes > 0 ? `${hours}ч ${minutes}м` : `${hours}ч`;
     }
 
     trackByCourseId(index: number, course: LearningCourse): string {
