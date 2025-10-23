@@ -1,9 +1,8 @@
 .learning-article-container {
-  max-width: 800px;
-  margin: 0 auto;
+  width: 100%;
   padding: 2rem;
   background: var(--surface-card);
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 
   .article-header {
@@ -183,7 +182,6 @@
 @media (max-width: 768px) {
   .learning-article-container {
     padding: 1rem;
-    margin: 0 1rem;
 
     .article-header {
       .article-meta {

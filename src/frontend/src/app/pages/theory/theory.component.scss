@@ -670,9 +670,16 @@
             }
 
             .article-preview {
+                .article-description {
+                    color: var(--text-color);
+                    font-size: 0.95rem;
+                    margin: 0 0 0.5rem 0;
+                    line-height: 1.4;
+                }
+
                 .article-summary {
                     color: var(--text-color-secondary);
-                    font-size: 0.9rem;
+                    font-size: 0.85rem;
                     margin: 0;
                     font-style: italic;
                 }
