@@ -49,8 +49,8 @@ public class LearningArticleService : ILearningArticleService
         }       
         
         article.LearningModuleId = request.LearningModuleId;
-        article.ClearContentItems();
-        article.AddContentItems(request.ContentItems.Select(LearningArticleContentItemMapper.ToEntity).ToList());
+        article.ClearContentSections();
+        article.AddContentSections(request.ContentSections.Select(LearningArticleContentSectionMapper.ToEntity).ToList());
 
         await _repository.UpdateAsync(article, cancellationToken);
     }

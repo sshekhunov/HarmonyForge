@@ -11,7 +11,7 @@ public static class LearningArticleMapper
         {
             Id = entity.Id,
             LearningModuleId = entity.LearningModuleId,
-            ContentItems = entity.ContentItems.Select(LearningArticleContentItemMapper.ToDto).ToList()
+            ContentSections = entity.ContentItems.Select(LearningArticleContentSectionMapper.ToDto).ToList()
         };
     }
 
@@ -28,8 +28,43 @@ public static class LearningArticleMapper
             LearningModuleId = dto.LearningModuleId
         };
         
-        article.AddContentItems(dto.ContentItems.Select(LearningArticleContentItemMapper.ToEntity).ToList());
+        article.AddContentSections(dto.ContentSections.Select(LearningArticleContentSectionMapper.ToEntity).ToList());
         return article;
+    }
+}
+
+public static class LearningArticleContentSectionMapper
+{
+    public static LearningArticleContentSectionDto ToDto(LearningArticleContentSection entity)
+    {
+        return new LearningArticleContentSectionDto
+        {
+            Title = entity.Title,
+            Order = entity.Order,
+            ContentItems = entity.ContentItems.Select(LearningArticleContentItemMapper.ToDto).ToList()
+        };
+    }
+
+    public static IList<LearningArticleContentSectionDto> ToDtoList(IEnumerable<LearningArticleContentSection> entities)
+    {
+        return entities.Select(ToDto).ToList();
+    }
+
+    public static LearningArticleContentSection ToEntity(LearningArticleContentSectionDto dto)
+    {
+        var section = new LearningArticleContentSection
+        {
+            Title = dto.Title,
+            Order = dto.Order
+        };
+        
+        section.AddContentItems(dto.ContentItems.Select(LearningArticleContentItemMapper.ToEntity).ToList());
+        return section;
+    }
+
+    public static IList<LearningArticleContentSection> ToEntityList(IEnumerable<LearningArticleContentSectionDto> dtos)
+    {
+        return dtos.Select(ToEntity).ToList();
     }
 }
 
@@ -40,7 +75,8 @@ public static class LearningArticleContentItemMapper
         return new LearningArticleContentItemDto
         {
             Content = entity.Content,
-            SectionBlockNumber = entity.SectionBlockNumber
+            Order = entity.Order,
+            Type = entity.Type
         };
     }
 
@@ -54,7 +90,8 @@ public static class LearningArticleContentItemMapper
         return new LearningArticleContentItem
         {
             Content = dto.Content,
-            SectionBlockNumber = dto.SectionBlockNumber
+            Order = dto.Order,
+            Type = dto.Type
         };
     }
 

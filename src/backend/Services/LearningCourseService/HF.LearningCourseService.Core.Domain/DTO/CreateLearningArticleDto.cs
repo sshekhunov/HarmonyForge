@@ -7,5 +7,5 @@ public class CreateLearningArticleDto
     [Required(ErrorMessage = "LearningModuleId is required")]
     public Guid LearningModuleId { get; set; }
     
-    public ICollection<LearningArticleContentItemDto> ContentItems { get; set; } = [];
+    public ICollection<LearningArticleContentSectionDto> ContentSections { get; set; } = [];
 }
