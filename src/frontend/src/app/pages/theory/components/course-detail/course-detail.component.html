@@ -1,0 +1,79 @@
+<!-- Articles Loading State -->
+<div *ngIf="loading" class="loading-container">
+  <div class="loading-content">
+    <p-progressSpinner
+      [style]="{'width': '50px', 'height': '50px'}"
+      strokeWidth="4"
+      fill="transparent"
+      animationDuration="1s">
+    </p-progressSpinner>
+    <p class="loading-text">Загрузка статей...</p>
+  </div>
+</div>
+
+<!-- Articles Error State -->
+<div *ngIf="error && !loading" class="error-container">
+  <div class="error-content">
+    <i class="pi pi-exclamation-triangle error-icon"></i>
+    <h3>Что-то пошло не так</h3>
+    <p>{{ error }}</p>
+    <p-button
+      label="Попробовать снова"
+      icon="pi pi-refresh"
+      (onClick)="onRetryLoad()"
+      [outlined]="true">
+    </p-button>
+  </div>
+</div>
+
+<!-- Articles Content -->
+<div *ngIf="!loading && !error" class="articles-content">
+  <!-- Modules with Articles -->
+  <div class="modules-container">
+    <div *ngFor="let moduleWithArticles of getModulesWithArticles(); trackBy: trackByModuleId"
+         class="module-card">
+
+      <!-- Module Header -->
+      <div class="module-header" (click)="onModuleToggled(moduleWithArticles.id)">
+        <div class="module-info">
+          <h3 class="module-title">{{ getModuleNumber(moduleWithArticles) }}. {{ moduleWithArticles.title }}</h3>
+          <p class="module-description" *ngIf="moduleWithArticles.description">
+            {{ moduleWithArticles.description }}
+          </p>
+        </div>
+        <div class="module-stats">
+          <i class="pi pi-chevron-down module-toggle"
+             [class.pi-chevron-up]="isModuleExpanded(moduleWithArticles.id)"></i>
+        </div>
+      </div>
+
+      <!-- Articles List -->
+      <div class="articles-list"
+           *ngIf="moduleWithArticles.articles.length > 0 && isModuleExpanded(moduleWithArticles.id)">
+        <div *ngFor="let articleWithModule of moduleWithArticles.articles; trackBy: trackByArticleId"
+             class="article-item" (click)="onArticleSelected(articleWithModule.article, moduleWithArticles)">
+          <div class="article-content">
+            <div class="article-header">
+              <h4 class="article-title">{{ getModuleNumber(moduleWithArticles) }}.{{ getArticleNumber(articleWithModule.article) }}. {{ getArticleTitle(articleWithModule.article) }}</h4>
+              <p-tag
+                value="Статья"
+                severity="info"
+                [rounded]="true">
+              </p-tag>
+            </div>
+            <div class="article-preview">
+              <p class="article-description">{{ getArticleDescription(articleWithModule.article) }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- No Articles State -->
+      <div *ngIf="moduleWithArticles.articles.length === 0 && isModuleExpanded(moduleWithArticles.id)"
+           class="no-articles">
+        <i class="pi pi-file-o no-articles-icon"></i>
+        <p>Статьи для этого модуля пока недоступны.</p>
+      </div>
+    </div>
+  </div>
+</div>

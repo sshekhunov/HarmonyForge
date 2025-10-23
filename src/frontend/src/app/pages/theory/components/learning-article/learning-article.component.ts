@@ -4,7 +4,7 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { DividerModule } from 'primeng/divider';
-import { LearningArticle, LearningArticleContentSection, LearningArticleContentItem } from '../models/learning-article.model';
+import { LearningArticle, LearningArticleContentSection, LearningArticleContentItem } from '../../models/learning-article.model';
 
 @Component({
   selector: 'app-learning-article',

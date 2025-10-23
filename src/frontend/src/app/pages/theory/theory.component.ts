@@ -1,20 +1,18 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
-import { TagModule } from 'primeng/tag';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { TooltipModule } from 'primeng/tooltip';
 import { LearningCourseService } from './service/learning-course.service';
 import { LearningArticleService } from './service/learning-article.service';
 import { LearningCourse, LearningModule } from './models/learning-course.model';
 import { LearningArticle, LearningArticleWithModule } from './models/learning-article.model';
-import { LearningArticleComponent } from './components/learning-article.component';
+import { LearningArticleComponent } from './components/learning-article/learning-article.component';
+import { CourseListComponent } from './components/course-list/course-list.component';
+import { CourseDetailComponent } from './components/course-detail/course-detail.component';
 
 @Component({
     selector: 'app-theory',
     standalone: true,
-    imports: [CommonModule, ButtonModule, CardModule, TagModule, ProgressSpinnerModule, TooltipModule, LearningArticleComponent],
+    imports: [CommonModule, ButtonModule, LearningArticleComponent, CourseListComponent, CourseDetailComponent],
     templateUrl: './theory.component.html',
     styleUrls: ['./theory.component.scss']
 })
@@ -122,57 +120,12 @@ export class TheoryComponent implements OnInit {
         this.showArticleDetail = true;
     }
 
-    getModulesWithArticles() {
-        if (!this.selectedCourse) return [];
-
-        return this.selectedCourse.modules.map(module => ({
-            ...module,
-            articles: this.articlesByModule[module.id] || []
-        }));
-    }
-
     toggleModule(moduleId: string) {
         if (this.expandedModules.has(moduleId)) {
             this.expandedModules.delete(moduleId);
         } else {
             this.expandedModules.add(moduleId);
         }
-    }
-
-    isModuleExpanded(moduleId: string): boolean {
-        return this.expandedModules.has(moduleId);
-    }
-
-    getModuleCount(course: LearningCourse): number {
-        return course.modules?.length || 0;
-    }
-
-    getArticleTitle(article: LearningArticle): string {
-        return article.title || 'Статья';
-    }
-
-    getArticleDescription(article: LearningArticle): string {
-        return article.description || 'Описание статьи недоступно';
-    }
-
-    getArticleNumber(article: LearningArticle): number {
-        return article.number || 0;
-    }
-
-    getModuleNumber(module: LearningModule): number {
-        return module.number || 0;
-    }
-
-    trackByCourseId(index: number, course: LearningCourse): string {
-        return course.id;
-    }
-
-    trackByModuleId(index: number, module: any): string {
-        return module.id;
-    }
-
-    trackByArticleId(index: number, articleWithModule: LearningArticleWithModule): string {
-        return articleWithModule.article.id;
     }
 
     trackByContentSection(index: number, section: any): number {
