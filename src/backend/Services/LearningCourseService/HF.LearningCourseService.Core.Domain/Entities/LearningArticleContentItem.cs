@@ -4,5 +4,14 @@ public class LearningArticleContentItem
 {
     public string Content { get; set; } = string.Empty;
 
-    public int SectionBlockNumber { get; set; } = 0;
+    public int Order { get; set; } = 0;
+
+    public LearningArticleContentItemType Type { get; set; }
+}
+
+public enum LearningArticleContentItemType
+{
+    Text,
+    Image,
+    Video
 }

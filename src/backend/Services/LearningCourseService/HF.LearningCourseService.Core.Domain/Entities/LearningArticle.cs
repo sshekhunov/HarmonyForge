@@ -3,22 +3,22 @@
 public class LearningArticle
     : BaseEntity
 {
-    private List<LearningArticleContentItem> _contentItems = [];
+    private List<LearningArticleContentSection> _contentSections = [];
 
     public Guid LearningModuleId { get; set; }
 
-    public IEnumerable<LearningArticleContentItem> ContentItems => _contentItems;
+    public IEnumerable<LearningArticleContentSection> ContentItems => _contentSections;
 
-    public void AddContentItems(List<LearningArticleContentItem> items)
+    public void AddContentSections(List<LearningArticleContentSection> sections)
     {
-        if (items != null && items.Any())
+        if (sections != null && sections.Any())
         {
-            _contentItems.AddRange(items);
+            _contentSections.AddRange(sections);
         }
     }
 
-    public void ClearContentItems()
+    public void ClearContentSections()
     {
-        _contentItems.Clear();
+        _contentSections.Clear();
     }
 }
