@@ -148,22 +148,19 @@ export class TheoryComponent implements OnInit {
     }
 
     getArticleTitle(article: LearningArticle): string {
-        if (article.contentSections && article.contentSections.length > 0) {
-            return article.contentSections[0].title || 'Статья';
-        }
-        return 'Статья';
+        return article.title || 'Статья';
     }
 
     getArticleDescription(article: LearningArticle): string {
-        if (article.contentSections && article.contentSections.length > 0) {
-            const firstSection = article.contentSections[0];
-            if (firstSection.contentItems && firstSection.contentItems.length > 0) {
-                const firstContent = firstSection.contentItems[0].content;
-                // Return first 100 characters of the content as description
-                return firstContent.length > 100 ? firstContent.substring(0, 100) + '...' : firstContent;
-            }
-        }
-        return 'Описание статьи недоступно';
+        return article.description || 'Описание статьи недоступно';
+    }
+
+    getArticleNumber(article: LearningArticle): number {
+        return article.number || 0;
+    }
+
+    getModuleNumber(module: LearningModule): number {
+        return module.number || 0;
     }
 
     trackByCourseId(index: number, course: LearningCourse): string {

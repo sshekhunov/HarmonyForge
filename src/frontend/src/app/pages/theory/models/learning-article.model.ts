@@ -1,6 +1,9 @@
 export interface LearningArticle {
   id: string;
   learningModuleId: string;
+  title: string;
+  description: string;
+  number: number;
   contentSections: LearningArticleContentSection[];
 }
 

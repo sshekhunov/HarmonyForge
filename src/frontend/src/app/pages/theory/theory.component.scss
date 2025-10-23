@@ -290,8 +290,21 @@
                     font-size: 0.75rem;
                 }
 
+                .module-number {
+                    font-weight: 600;
+                    color: var(--primary-color);
+                    font-size: 0.8rem;
+                    min-width: 1.5rem;
+                }
+
                 .module-name {
                     flex: 1;
+                }
+
+                .module-description {
+                    flex: 2;
+                    font-size: 0.8rem;
+                    color: var(--text-color-secondary);
                 }
 
                 .module-count {

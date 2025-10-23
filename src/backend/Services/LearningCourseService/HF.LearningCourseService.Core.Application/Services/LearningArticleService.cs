@@ -49,6 +49,9 @@ public class LearningArticleService : ILearningArticleService
         }       
         
         article.LearningModuleId = request.LearningModuleId;
+        article.Title = request.Title;
+        article.Description = request.Description;
+        article.Number = request.Number;
         article.ClearContentSections();
         article.AddContentSections(request.ContentSections.Select(LearningArticleContentSectionMapper.ToEntity).ToList());
 
