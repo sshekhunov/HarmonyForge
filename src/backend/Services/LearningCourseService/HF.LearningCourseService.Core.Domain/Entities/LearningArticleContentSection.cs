@@ -1,6 +1,6 @@
 ﻿namespace HF.LearningCourseService.Core.Domain.Entities;
 
-public class LearningArticleContentSection
+public class LearningArticleContentSection : BaseEntity
 {
     private List<LearningArticleContentItem> _contentItems = [];
 

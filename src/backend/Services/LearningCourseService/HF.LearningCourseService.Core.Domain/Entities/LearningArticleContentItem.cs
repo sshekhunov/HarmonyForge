@@ -1,6 +1,6 @@
 ﻿namespace HF.LearningCourseService.Core.Domain.Entities;
 
-public class LearningArticleContentItem
+public class LearningArticleContentItem : BaseEntity
 {
     public string Content { get; set; } = string.Empty;
 

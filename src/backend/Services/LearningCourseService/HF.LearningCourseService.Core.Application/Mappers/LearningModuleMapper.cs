@@ -24,7 +24,7 @@ public static class LearningModuleMapper
     {
         return new LearningModule
         {
-            Id = dto.Id,
+            Id = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id,
             Title = dto.Title,
             Description = dto.Description
         };
