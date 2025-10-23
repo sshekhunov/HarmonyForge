@@ -11,7 +11,8 @@ public static class LearningModuleMapper
         {
             Id = entity.Id,
             Title = entity.Title,
-            Description = entity.Description
+            Description = entity.Description,
+            Number = entity.Number
         };
     }
 
@@ -26,7 +27,8 @@ public static class LearningModuleMapper
         {
             Id = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id,
             Title = dto.Title,
-            Description = dto.Description
+            Description = dto.Description,
+            Number = dto.Number
         };
     }
 

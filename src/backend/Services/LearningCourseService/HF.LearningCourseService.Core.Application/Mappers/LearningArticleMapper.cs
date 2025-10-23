@@ -11,6 +11,9 @@ public static class LearningArticleMapper
         {
             Id = entity.Id,
             LearningModuleId = entity.LearningModuleId,
+            Title = entity.Title,
+            Description = entity.Description,
+            Number = entity.Number,
             ContentSections = entity.ContentItems.Select(LearningArticleContentSectionMapper.ToDto).ToList()
         };
     }
@@ -25,7 +28,10 @@ public static class LearningArticleMapper
         var article = new LearningArticle
         {
             Id = Guid.NewGuid(),
-            LearningModuleId = dto.LearningModuleId
+            LearningModuleId = dto.LearningModuleId,
+            Title = dto.Title,
+            Description = dto.Description,
+            Number = dto.Number
         };
         
         article.AddContentSections(dto.ContentSections.Select(LearningArticleContentSectionMapper.ToEntity).ToList());
