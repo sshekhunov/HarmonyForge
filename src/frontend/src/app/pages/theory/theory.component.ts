@@ -7,13 +7,14 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TooltipModule } from 'primeng/tooltip';
 import { LearningCourseService } from './service/learning-course.service';
 import { LearningArticleService } from './service/learning-article.service';
-import { LearningCourse } from './models/learning-course.model';
+import { LearningCourse, LearningModule } from './models/learning-course.model';
 import { LearningArticle, LearningArticleWithModule } from './models/learning-article.model';
+import { LearningArticleComponent } from './components/learning-article.component';
 
 @Component({
     selector: 'app-theory',
     standalone: true,
-    imports: [CommonModule, ButtonModule, CardModule, TagModule, ProgressSpinnerModule, TooltipModule],
+    imports: [CommonModule, ButtonModule, CardModule, TagModule, ProgressSpinnerModule, TooltipModule, LearningArticleComponent],
     templateUrl: './theory.component.html',
     styleUrls: ['./theory.component.scss']
 })
@@ -29,6 +30,11 @@ export class TheoryComponent implements OnInit {
     articlesLoading = false;
     articlesError: string | null = null;
     expandedModules: Set<string> = new Set(); // Track which modules are expanded
+
+    // Article detail view state
+    showArticleDetail = false;
+    selectedArticle: LearningArticle | null = null;
+    selectedModule: LearningModule | null = null;
 
     constructor(
         private learningCourseService: LearningCourseService,
@@ -67,44 +73,23 @@ export class TheoryComponent implements OnInit {
         this.articlesError = null;
         this.articlesByModule = {};
 
-        // For now, we'll load all articles and group them by module
-        // In a real implementation, you'd need module IDs from the backend
+        // Load all articles and group them by module
         this.learningArticleService.getAllArticles().subscribe({
             next: (articles) => {
-                // Group articles by module (using a mock approach since we don't have module IDs)
-                // In a real implementation, articles would have a learningModuleId field
+                // Group articles by module ID
                 course.modules.forEach(module => {
-                    // For demonstration, we'll create mock articles for each module
-                    const mockArticles: LearningArticleWithModule[] = [
-                        {
-                            article: {
-                                id: `${module.title}-article-1`,
-                                learningModuleId: module.title,
-                                contentItems: [
-                                    {
-                                        content: `Это вводный контент для ${module.title}. Изучите основы и заложите прочный фундамент.`,
-                                        sectionBlockNumber: 1
-                                    },
-                                    {
-                                        content: `Это основной раздел контента для ${module.title}. Погрузитесь глубже в концепции и практические применения.`,
-                                        sectionBlockNumber: 2
-                                    },
-                                    {
-                                        content: `Это заключительный раздел для ${module.title}. Повторите изученное и подготовьтесь к следующим шагам.`,
-                                        sectionBlockNumber: 3
-                                    }
-                                ]
-                            },
-                            moduleTitle: module.title,
-                            moduleDescription: module.description
-                        }
-                    ];
-                    this.articlesByModule[module.title] = mockArticles;
+                    const moduleArticles = articles.filter(article => article.learningModuleId === module.id);
+                    const articlesWithModule: LearningArticleWithModule[] = moduleArticles.map(article => ({
+                        article: article,
+                        moduleTitle: module.title,
+                        moduleDescription: module.description
+                    }));
+                    this.articlesByModule[module.id] = articlesWithModule;
                 });
                 this.articlesLoading = false;
                 // Set first module as expanded by default
                 if (course.modules.length > 0) {
-                    this.expandedModules.add(course.modules[0].title);
+                    this.expandedModules.add(course.modules[0].id);
                 }
             },
             error: (error) => {
@@ -117,9 +102,24 @@ export class TheoryComponent implements OnInit {
 
     goBackToCourses() {
         this.showArticles = false;
+        this.showArticleDetail = false;
         this.selectedCourse = null;
+        this.selectedArticle = null;
+        this.selectedModule = null;
         this.articlesByModule = {};
         this.expandedModules.clear();
+    }
+
+    goBackToArticles() {
+        this.showArticleDetail = false;
+        this.selectedArticle = null;
+        this.selectedModule = null;
+    }
+
+    openArticle(article: LearningArticle, module: LearningModule) {
+        this.selectedArticle = article;
+        this.selectedModule = module;
+        this.showArticleDetail = true;
     }
 
     getModulesWithArticles() {
@@ -127,70 +127,43 @@ export class TheoryComponent implements OnInit {
 
         return this.selectedCourse.modules.map(module => ({
             ...module,
-            articles: this.articlesByModule[module.title] || []
+            articles: this.articlesByModule[module.id] || []
         }));
     }
 
-    toggleModule(moduleTitle: string) {
-        if (this.expandedModules.has(moduleTitle)) {
-            this.expandedModules.delete(moduleTitle);
+    toggleModule(moduleId: string) {
+        if (this.expandedModules.has(moduleId)) {
+            this.expandedModules.delete(moduleId);
         } else {
-            this.expandedModules.add(moduleTitle);
+            this.expandedModules.add(moduleId);
         }
     }
 
-    isModuleExpanded(moduleTitle: string): boolean {
-        return this.expandedModules.has(moduleTitle);
+    isModuleExpanded(moduleId: string): boolean {
+        return this.expandedModules.has(moduleId);
     }
 
     getModuleCount(course: LearningCourse): number {
         return course.modules?.length || 0;
     }
 
-    getTotalItems(course: LearningCourse): number {
-        return course.modules?.reduce((total, module) => total + (module.items?.length || 0), 0) || 0;
-    }
-
-    getModuleTypeIcon(type: number): string {
-        switch (type) {
-            case 0: return 'pi-book';
-            case 1: return 'pi-pencil';
-            case 2: return 'pi-question-circle';
-            default: return 'pi-file';
-        }
-    }
-
-    getModuleTypeLabel(type: number): string {
-        switch (type) {
-            case 0: return 'Статья';
-            case 1: return 'Упражнение';
-            case 2: return 'Тест';
-            default: return 'Неизвестно';
-        }
-    }
-
-    getEstimatedDuration(course: LearningCourse): string {
-        const totalItems = this.getTotalItems(course);
-        const estimatedMinutes = totalItems * 5; // 5 minutes per item
-        if (estimatedMinutes < 60) return `${estimatedMinutes} мин`;
-        const hours = Math.floor(estimatedMinutes / 60);
-        const minutes = estimatedMinutes % 60;
-        return minutes > 0 ? `${hours}ч ${minutes}м` : `${hours}ч`;
-    }
-
     trackByCourseId(index: number, course: LearningCourse): string {
         return course.id;
     }
 
-    trackByModuleTitle(index: number, module: any): string {
-        return module.title;
+    trackByModuleId(index: number, module: any): string {
+        return module.id;
     }
 
     trackByArticleId(index: number, articleWithModule: LearningArticleWithModule): string {
         return articleWithModule.article.id;
     }
 
+    trackByContentSection(index: number, section: any): number {
+        return section.order;
+    }
+
     trackByContentItem(index: number, contentItem: any): number {
-        return contentItem.sectionBlockNumber;
+        return contentItem.order;
     }
 }

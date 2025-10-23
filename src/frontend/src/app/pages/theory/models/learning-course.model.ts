@@ -7,14 +7,7 @@ export interface LearningCourse {
 }
 
 export interface LearningModule {
-  title: string;
-  description: string;
-  items: LearningModuleItem[];
-}
-
-export interface LearningModuleItem {
   id: string;
   title: string;
   description: string;
-  type: number; // 0: Article, 1: Exercise, 2: Test
 }

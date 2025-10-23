@@ -1,12 +1,19 @@
 export interface LearningArticle {
   id: string;
   learningModuleId: string;
+  contentSections: LearningArticleContentSection[];
+}
+
+export interface LearningArticleContentSection {
+  title: string;
+  order: number;
   contentItems: LearningArticleContentItem[];
 }
 
 export interface LearningArticleContentItem {
   content: string;
-  sectionBlockNumber: number;
+  order: number;
+  type: number; // 0: Text, 1: Image, 2: Video, etc.
 }
 
 export interface LearningArticleWithModule {

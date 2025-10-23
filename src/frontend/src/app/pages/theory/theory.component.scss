@@ -5,6 +5,11 @@
     margin: 0 auto;
 }
 
+// Article detail section
+.article-detail-section {
+    margin-top: 2rem;
+}
+
 // Page header
 .page-header {
     margin-bottom: 2rem;
@@ -635,6 +640,7 @@
         margin-bottom: 1rem;
         overflow: hidden;
         transition: all 0.2s ease;
+        cursor: pointer;
 
         &:last-child {
             margin-bottom: 0;
@@ -643,6 +649,7 @@
         &:hover {
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             transform: translateY(-1px);
+            border-color: var(--primary-color);
         }
 
         .article-content {
@@ -659,6 +666,15 @@
                     font-weight: 600;
                     color: var(--text-color);
                     margin: 0;
+                }
+            }
+
+            .article-preview {
+                .article-summary {
+                    color: var(--text-color-secondary);
+                    font-size: 0.9rem;
+                    margin: 0;
+                    font-style: italic;
                 }
             }
 
