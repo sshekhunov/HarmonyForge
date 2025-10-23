@@ -1,13 +1,16 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { OsmdRendererModule } from 'src/app/shared/osmd-renderer/osmd-renderer.module';
 import { FileUpload } from 'primeng/fileupload';
 import { PanelModule } from 'primeng/panel';
+import { ButtonModule } from 'primeng/button';
 
 @Component({
     selector: 'app-training',
     standalone: true,
     templateUrl: './training.component.html',
-    imports: [OsmdRendererModule, FileUpload, PanelModule]
+    styleUrls: ['./training.component.scss'],
+    imports: [CommonModule, OsmdRendererModule, FileUpload, PanelModule, ButtonModule]
 })
 export class Training {
 

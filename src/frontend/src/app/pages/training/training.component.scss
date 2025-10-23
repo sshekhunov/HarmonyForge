@@ -1,0 +1,129 @@
+// Main container
+.training-container {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+// Page header
+.page-header {
+    margin-bottom: 2rem;
+    text-align: center;
+    position: relative;
+    
+    .header-content {
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .page-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-color-secondary);
+            margin: 0;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    }
+}
+
+// Global PrimeNG component styling
+:host ::ng-deep {
+    .p-card {
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        border: 1px solid var(--surface-border);
+        overflow: hidden;
+        transition: all 0.3s ease;
+        margin-bottom: 1rem;
+        
+        &:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+    }
+    
+    .p-button {
+        border-radius: 6px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        
+        &.p-button-primary {
+            background: var(--primary-500);
+            border-color: var(--primary-500);
+            
+            &:hover {
+                background: var(--primary-600);
+                border-color: var(--primary-600);
+                transform: translateY(-1px);
+            }
+        }
+        
+        &.p-button-outlined {
+            &:hover {
+                transform: translateY(-1px);
+            }
+        }
+    }
+    
+    .p-panel {
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        
+        .p-panel-header {
+            background: var(--surface-50);
+            border-bottom: 1px solid var(--surface-border);
+            font-weight: 600;
+        }
+        
+        .p-panel-content {
+            padding: 1rem;
+        }
+    }
+    
+    .p-fileupload {
+        .p-fileupload-buttonbar {
+            background: var(--surface-50);
+            border-bottom: 1px solid var(--surface-border);
+        }
+        
+        .p-fileupload-content {
+            padding: 2rem;
+        }
+    }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+    .training-container {
+        padding: 1rem;
+    }
+    
+    .page-header {
+        .header-content {
+            .page-title {
+                font-size: 2rem;
+            }
+            
+            .page-subtitle {
+                font-size: 1rem;
+            }
+        }
+    }
+}
+
+@media (max-width: 480px) {
+    .page-header {
+        .header-content {
+            .page-title {
+                font-size: 1.75rem;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    }
+}

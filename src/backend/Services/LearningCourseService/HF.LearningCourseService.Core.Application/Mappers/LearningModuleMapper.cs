@@ -9,9 +9,10 @@ public static class LearningModuleMapper
     {
         return new LearningModuleDto
         {
+            Id = entity.Id,
             Title = entity.Title,
             Description = entity.Description,
-            Items = entity.Items.Select(LearningModuleItemMapper.ToDto).ToList()
+            Number = entity.Number
         };
     }
 
@@ -22,14 +23,13 @@ public static class LearningModuleMapper
 
     public static LearningModule ToEntity(LearningModuleDto dto)
     {
-        var module = new LearningModule
+        return new LearningModule
         {
+            Id = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id,
             Title = dto.Title,
-            Description = dto.Description
+            Description = dto.Description,
+            Number = dto.Number
         };
-
-        module.AddModuleItems(dto.Items.Select(LearningModuleItemMapper.ToEntity).ToList());
-        return module;
     }
 
     public static IList<LearningModule> ToEntityList(IEnumerable<LearningModuleDto> dtos)

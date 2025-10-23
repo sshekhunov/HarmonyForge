@@ -35,13 +35,6 @@ public class LearningArticleService : ILearningArticleService
 
     public async Task<Guid> AddAsync(CreateLearningArticleDto request, CancellationToken cancellationToken = default)
     {
-        // Check if an article already exists for this module
-        var existingArticle = await _repository.GetByModuleIdAsync(request.LearningModuleId, cancellationToken);
-        if (existingArticle.Any())
-        {
-            throw new InvalidOperationException($"A learning article already exists for module ID {request.LearningModuleId}");
-        }
-
         var article = LearningArticleMapper.ToEntity(request);
         await _repository.AddAsync(article, cancellationToken);
         return article.Id;
@@ -53,20 +46,14 @@ public class LearningArticleService : ILearningArticleService
         if (article is null)
         {
             throw new InvalidOperationException($"Learning article with ID {request.Id} not found");
-        }
-        
-        if (article.LearningModuleId != request.LearningModuleId)
-        {
-            var existingArticle = await _repository.GetByModuleIdAsync(request.LearningModuleId, cancellationToken);
-            if (existingArticle.Any())
-            {
-                throw new InvalidOperationException($"A learning article already exists for module ID {request.LearningModuleId}");
-            }
-        }
+        }       
         
         article.LearningModuleId = request.LearningModuleId;
-        article.ClearContentItems();
-        article.AddContentItems(request.ContentItems.Select(LearningArticleContentItemMapper.ToEntity).ToList());
+        article.Title = request.Title;
+        article.Description = request.Description;
+        article.Number = request.Number;
+        article.ClearContentSections();
+        article.AddContentSections(request.ContentSections.Select(LearningArticleContentSectionMapper.ToEntity).ToList());
 
         await _repository.UpdateAsync(article, cancellationToken);
     }

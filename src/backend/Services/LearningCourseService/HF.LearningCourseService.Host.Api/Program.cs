@@ -19,6 +19,17 @@ namespace HF.LearningCourseService.Host.Api
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 
+            // Add CORS services
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowLocalhost4200", policy =>
+                {
+                    policy.WithOrigins("http://localhost:4200")
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
+
             // MongoDB EF Core DbContext registration
             var mongoConnectionString = builder.Configuration.GetSection("MongoDb:ConnectionString").Get<string?>();
             var mongoDatabase = builder.Configuration.GetSection("MongoDb:Database").Get<string?>();
@@ -50,6 +61,9 @@ namespace HF.LearningCourseService.Host.Api
             }
 
             app.UseHttpsRedirection();
+
+            // Use CORS
+            app.UseCors("AllowLocalhost4200");
 
             app.UseAuthorization();
 

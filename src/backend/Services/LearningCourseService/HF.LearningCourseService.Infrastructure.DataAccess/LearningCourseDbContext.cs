@@ -18,8 +18,17 @@ namespace HF.LearningCourseService.Infrastructure.DataAccess
 		{
 			modelBuilder.Entity<LearningCourse>().ToCollection("learning_courses");
 			modelBuilder.Entity<LearningArticle>().ToCollection("learning_articles");
-            modelBuilder.Entity<LearningArticle>().HasIndex(a => a.LearningModuleId).IsUnique();
-
+            
+            // Configure relationships
+            modelBuilder.Entity<LearningArticle>()
+                .HasIndex(a => a.LearningModuleId);
+                
+            modelBuilder.Entity<LearningCourse>()
+                .OwnsMany(c => c.Modules, module =>
+                {
+                    module.WithOwner().HasForeignKey("LearningCourseId");
+                    module.Property(m => m.Id).ValueGeneratedOnAdd();
+                });
         }
 	}
 }
