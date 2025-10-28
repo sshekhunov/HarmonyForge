@@ -6,4 +6,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.Xml.XmlDocument" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\HF.HarmonyAnalysisService.Core.Domain\HF.HarmonyAnalysisService.Core.Domain.csproj" />
+  </ItemGroup>
+
 </Project>
