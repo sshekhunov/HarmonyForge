@@ -7,7 +7,7 @@ import { LearningArticle } from '../models/learning-article.model';
   providedIn: 'root'
 })
 export class LearningArticleService {
-  private readonly apiUrl = 'http://localhost:5085/api/learningarticles';
+  private readonly apiUrl = 'http://localhost:5065/api/theory/learningarticles';
 
   constructor(private http: HttpClient) { }
 

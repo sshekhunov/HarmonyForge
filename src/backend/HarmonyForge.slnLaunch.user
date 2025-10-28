@@ -1,0 +1,27 @@
+[
+  {
+    "Name": "All services",
+    "Projects": [
+      {
+        "Path": "Services\\GatewayService\\GatewayService.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      },
+      {
+        "Path": "Services\\HarmonyAnalysisService\\HF.HarmonyAnalysisService.Host.Api\\HF.HarmonyAnalysisService.Host.Api.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      },
+      {
+        "Path": "Services\\StudentProfileService\\HF.StudentProfileService.Host.Api\\HF.StudentProfileService.Host.Api.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      },
+      {
+        "Path": "Services\\LearningCourseService\\HF.LearningCourseService.Host.Api\\HF.LearningCourseService.Host.Api.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      }
+    ]
+  }
+]

@@ -7,7 +7,7 @@ import { LearningCourse } from '../models/learning-course.model';
   providedIn: 'root'
 })
 export class LearningCourseService {
-  private readonly apiUrl = 'http://localhost:5085/api/learningcourses';
+  private readonly apiUrl = 'http://localhost:5065/api/theory/learningcourses';
 
   constructor(private http: HttpClient) { }
 

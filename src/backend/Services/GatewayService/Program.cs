@@ -1,4 +1,6 @@
 
+using Yarp.ReverseProxy.Configuration;
+
 namespace GatewayService
 {
     public class Program
@@ -8,10 +10,28 @@ namespace GatewayService
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+            builder.Services.AddControllers();
+            
+            // Add CORS
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowFrontend", policy =>
+                {
+                    policy.WithOrigins("http://localhost:4200", "https://localhost:4200")
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
+                          .AllowCredentials();
+                });
+            });
+            
+            // Add reverse proxy
+            builder.Services.AddReverseProxy()
+                .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+
             builder.Services.AddAuthorization();
 
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();            
+            builder.Services.AddOpenApi();
 
             var app = builder.Build();
 
@@ -23,7 +43,12 @@ namespace GatewayService
 
             app.UseHttpsRedirection();
 
-            app.UseAuthorization();          
+            app.UseCors("AllowFrontend");
+
+            app.UseAuthorization();
+
+            app.MapControllers();
+            app.MapReverseProxy();
 
             app.Run();
         }
