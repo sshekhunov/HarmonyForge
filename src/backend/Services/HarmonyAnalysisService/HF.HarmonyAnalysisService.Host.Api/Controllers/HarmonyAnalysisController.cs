@@ -5,7 +5,7 @@ using HF.HarmonyAnalysisService.Core.Domain.Interfaces;
 namespace HF.HarmonyAnalysisService.Host.Api.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class HarmonyAnalysisController : ControllerBase
     {
         private readonly IHarmonyAnalysisService _harmonyAnalysisService;
@@ -16,7 +16,7 @@ namespace HF.HarmonyAnalysisService.Host.Api.Controllers
         }
 
 
-        [HttpPost("AnalyseHarmony")]
+        [HttpPost()]
         public async Task<IActionResult> AnalyseHarmony([FromBody] HarmonyAnalysisRequestDto request)
         {
             try
