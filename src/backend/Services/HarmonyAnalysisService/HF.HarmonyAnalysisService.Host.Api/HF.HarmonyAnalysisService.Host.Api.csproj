@@ -14,4 +14,9 @@
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\HF.HarmonyAnalysisService.Core.Application\HF.HarmonyAnalysisService.Core.Application.csproj" />
+    <ProjectReference Include="..\HF.HarmonyAnalysisService.Core.Domain\HF.HarmonyAnalysisService.Core.Domain.csproj" />
+  </ItemGroup>
+
 </Project>
