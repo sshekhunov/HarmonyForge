@@ -1,20 +1,11 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { OsmdRendererModule } from 'src/app/shared/osmd-renderer/osmd-renderer.module';
 import { FileUpload } from 'primeng/fileupload';
 import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
-
-interface HarmonyAnalysisRequest {
-  musicXmlContent: string;
-}
-
-interface HarmonyAnalysisResponse {
-  noteCount: number;
-  isSuccessful: boolean;
-  errorMessage?: string;
-}
+import { TrainingService } from './training.service';
+import { HarmonyAnalysisRequest, HarmonyAnalysisResponse } from './training.model';
 
 @Component({
     selector: 'app-training',
@@ -31,7 +22,7 @@ export class Training {
     noteCount = 0;
     isLoading = false;
 
-    constructor(private http: HttpClient) {}
+    constructor(private trainingService: TrainingService) {}
 
     ngOnInit(): void {
         this.musicXml = '';
@@ -72,13 +63,7 @@ export class Training {
                 musicXmlContent: this.musicXml
             };
 
-            console.log('Sending request:', request);
-            console.log('Request URL:', 'http://localhost:5102/HarmonyAnalysis/AnalyseHarmony');
-
-            const response = await this.http.post<HarmonyAnalysisResponse>(
-                'http://localhost:5102/HarmonyAnalysis/AnalyseHarmony',
-                request
-            ).toPromise();
+            const response = await this.trainingService.analyzeHarmony(request).toPromise();
 
             console.log('Response received:', response);
 
