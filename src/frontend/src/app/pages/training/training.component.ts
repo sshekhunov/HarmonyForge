@@ -65,8 +65,6 @@ export class Training {
 
             const response = await this.trainingService.analyzeHarmony(request).toPromise();
 
-            console.log('Response received:', response);
-
             if (response?.isSuccessful) {
                 this.noteCount = response.noteCount;
                 this.checkResult = `Анализ завершен успешно! Найдено нот: ${response.noteCount}`;
@@ -74,8 +72,6 @@ export class Training {
                 this.checkResult = `Ошибка анализа: ${response?.errorMessage || 'Неизвестная ошибка'}`;
             }
         } catch (error) {
-            console.error('Error analyzing harmony:', error);
-            console.error('Error details:', JSON.stringify(error));
             this.checkResult = `Ошибка при отправке запроса на сервер: ${error}`;
         } finally {
             this.isLoading = false;
