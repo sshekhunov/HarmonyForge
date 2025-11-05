@@ -55,6 +55,13 @@
               </div>
             </div>
           </div>
+
+          <!-- MusicXml Content -->
+          <div *ngIf="contentItem.type === 3" class="musicxml-content">
+            <div class="content-wrapper">
+              <lib-osmd-renderer [source]="contentItem.content"></lib-osmd-renderer>
+            </div>
+          </div>
         </div>
       </div>
     </div>

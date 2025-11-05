@@ -16,7 +16,7 @@ export interface LearningArticleContentSection {
 export interface LearningArticleContentItem {
   content: string;
   order: number;
-  type: number; // 0: Text, 1: Image, 2: Video, etc.
+  type: number; // 0: Text, 1: Image, 2: Video, 3: MusicXml
 }
 
 export interface LearningArticleWithModule {

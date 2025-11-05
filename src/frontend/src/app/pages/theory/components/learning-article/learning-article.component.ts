@@ -5,12 +5,13 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { DividerModule } from 'primeng/divider';
+import { OsmdRendererModule } from '@/shared/components/osmd-renderer/osmd-renderer.module';
 import { LearningArticle, LearningArticleContentSection, LearningArticleContentItem } from '../../models/learning-article.model';
 
 @Component({
   selector: 'app-learning-article',
   standalone: true,
-  imports: [CommonModule, ButtonModule, CardModule, TagModule, DividerModule],
+  imports: [CommonModule, ButtonModule, CardModule, TagModule, DividerModule, OsmdRendererModule],
   templateUrl: './learning-article.component.html',
   styleUrls: ['./learning-article.component.scss']
 })
