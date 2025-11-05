@@ -58,10 +58,10 @@
 
           <!-- MusicXml Content -->
           <div *ngIf="contentItem.type === 3" class="musicxml-content">
-            <div class="content-wrapper">
+            <div class="content-wrapper relative">
 
               <lib-osmd-renderer [source]="contentItem.content"></lib-osmd-renderer>
-              <div class="musicxml-header">
+              <div class="absolute bottom-15 right-0 z-10">
                 <p-button
                   label="Скачать"
                   icon="pi pi-download"
