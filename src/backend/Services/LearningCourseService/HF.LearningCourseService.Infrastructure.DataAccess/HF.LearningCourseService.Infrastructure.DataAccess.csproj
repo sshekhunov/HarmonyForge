@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\HF.LearningCourseService.Core.Domain.Interfaces\HF.LearningCourseService.Core.Domain.Interfaces.csproj" />
     <ProjectReference Include="..\HF.LearningCourseService.Core.Domain\HF.LearningCourseService.Core.Domain.csproj" />
   </ItemGroup>
 
