@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { OsmdRendererModule } from 'src/app/shared/osmd-renderer/osmd-renderer.module';
+import { OsmdRendererModule } from '@/shared/components/osmd-renderer/osmd-renderer.module';
 import { FileUpload } from 'primeng/fileupload';
 import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';

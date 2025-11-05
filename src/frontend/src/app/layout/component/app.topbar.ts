@@ -4,6 +4,7 @@ import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { StyleClassModule } from 'primeng/styleclass';
 import { ButtonModule } from 'primeng/button';
+import { TooltipModule } from 'primeng/tooltip';
 import { LayoutService } from '../service/layout.service';
 import { AuthComponent } from '../../shared/components/auth/auth.component';
 import { AuthStateService } from '../../shared/services/auth-state.service';
@@ -12,7 +13,7 @@ import { AuthService } from '../../shared/services/auth.service';
 @Component({
     selector: 'app-topbar',
     standalone: true,
-    imports: [RouterModule, CommonModule, StyleClassModule, ButtonModule, AuthComponent],
+    imports: [RouterModule, CommonModule, StyleClassModule, ButtonModule, TooltipModule, AuthComponent],
     template: ` <div class="layout-topbar">
         <div class="layout-topbar-logo-container">
             <a class="layout-topbar-logo" routerLink="/">
@@ -73,16 +74,14 @@ import { AuthService } from '../../shared/services/auth.service';
                                     {{ authStateService.getUser()?.email }}
                                 </span>
                             </div>
-                            <button type="button" class="layout-topbar-action" (click)="logout()" pRipple>
+                            <button type="button" class="layout-topbar-action" (click)="logout()" pRipple pTooltip="Выйти" tooltipPosition="bottom">
                                 <i class="pi pi-sign-out"></i>
-                                <span>Выйти</span>
                             </button>
                         </div>
                     </ng-container>
                     <ng-template #notAuthenticated>
-                        <button type="button" class="layout-topbar-action" (click)="showAuthDialog()" pRipple>
-                            <i class="pi pi-user"></i>
-                            <span>Войти</span>
+                        <button type="button" class="layout-topbar-action" (click)="showAuthDialog()" pRipple pTooltip="Войти" tooltipPosition="bottom">
+                            <i class="pi pi-unlock"></i>
                         </button>
                     </ng-template>
                 </div>
@@ -97,7 +96,7 @@ export class AppTopbar {
     @ViewChild('authComponent') authComponent!: AuthComponent;
 
     constructor(
-        public layoutService: LayoutService, 
+        public layoutService: LayoutService,
         public router: Router,
         public authStateService: AuthStateService,
         private authService: AuthService
