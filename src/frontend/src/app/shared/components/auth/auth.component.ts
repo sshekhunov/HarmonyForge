@@ -23,9 +23,9 @@ import { RegisterRequest, LoginRequest } from '../../models/auth.model';
         MessageModule
     ],
     template: `
-        <p-dialog 
-            [(visible)]="visible" 
-            [modal]="true" 
+        <p-dialog
+            [(visible)]="visible"
+            [modal]="true"
             [style]="{ width: '450px' }"
             [draggable]="false"
             [resizable]="false"
@@ -33,7 +33,7 @@ import { RegisterRequest, LoginRequest } from '../../models/auth.model';
             (onHide)="onClose()">
             <div class="flex flex-col gap-4">
                 <div class="flex gap-2 mb-4">
-                    <button 
+                    <button
                         type="button"
                         class="flex-1 p-2 text-center rounded-lg transition-colors"
                         [class.bg-primary]="isLoginMode()"
@@ -45,7 +45,7 @@ import { RegisterRequest, LoginRequest } from '../../models/auth.model';
                         (click)="setLoginMode(true)">
                         Вход
                     </button>
-                    <button 
+                    <button
                         type="button"
                         class="flex-1 p-2 text-center rounded-lg transition-colors"
                         [class.bg-primary]="!isLoginMode()"
@@ -62,11 +62,11 @@ import { RegisterRequest, LoginRequest } from '../../models/auth.model';
                 <form *ngIf="isLoginMode()" (ngSubmit)="onLogin()" class="flex flex-col gap-4">
                     <div class="flex flex-col gap-2">
                         <label for="login-email" class="text-surface-900 dark:text-surface-0 font-medium">Email</label>
-                        <input 
-                            pInputText 
-                            id="login-email" 
-                            type="email" 
-                            placeholder="Email" 
+                        <input
+                            pInputText
+                            id="login-email"
+                            type="email"
+                            placeholder="Email"
                             [(ngModel)]="loginForm.email"
                             name="loginEmail"
                             required
@@ -74,10 +74,10 @@ import { RegisterRequest, LoginRequest } from '../../models/auth.model';
                     </div>
                     <div class="flex flex-col gap-2">
                         <label for="login-password" class="text-surface-900 dark:text-surface-0 font-medium">Пароль</label>
-                        <p-password 
-                            id="login-password" 
-                            [(ngModel)]="loginForm.password" 
-                            placeholder="Пароль" 
+                        <p-password
+                            id="login-password"
+                            [(ngModel)]="loginForm.password"
+                            placeholder="Пароль"
                             [toggleMask]="true"
                             [feedback]="false"
                             name="loginPassword"
@@ -86,9 +86,9 @@ import { RegisterRequest, LoginRequest } from '../../models/auth.model';
                             required></p-password>
                     </div>
                     <p-message *ngIf="loginError" severity="error" [text]="loginError"></p-message>
-                    <p-button 
-                        type="submit" 
-                        label="Войти" 
+                    <p-button
+                        type="submit"
+                        label="Войти"
                         [loading]="isLoading()"
                         [styleClass]="'w-full'"
                         styleClass="w-full"></p-button>
@@ -97,11 +97,11 @@ import { RegisterRequest, LoginRequest } from '../../models/auth.model';
                 <form *ngIf="!isLoginMode()" (ngSubmit)="onRegister()" class="flex flex-col gap-4">
                     <div class="flex flex-col gap-2">
                         <label for="register-username" class="text-surface-900 dark:text-surface-0 font-medium">Имя пользователя</label>
-                        <input 
-                            pInputText 
-                            id="register-username" 
-                            type="text" 
-                            placeholder="Имя пользователя" 
+                        <input
+                            pInputText
+                            id="register-username"
+                            type="text"
+                            placeholder="Имя пользователя"
                             [(ngModel)]="registerForm.userName"
                             name="registerUsername"
                             required
@@ -109,11 +109,11 @@ import { RegisterRequest, LoginRequest } from '../../models/auth.model';
                     </div>
                     <div class="flex flex-col gap-2">
                         <label for="register-email" class="text-surface-900 dark:text-surface-0 font-medium">Email</label>
-                        <input 
-                            pInputText 
-                            id="register-email" 
-                            type="email" 
-                            placeholder="Email" 
+                        <input
+                            pInputText
+                            id="register-email"
+                            type="email"
+                            placeholder="Email"
                             [(ngModel)]="registerForm.email"
                             name="registerEmail"
                             required
@@ -121,13 +121,26 @@ import { RegisterRequest, LoginRequest } from '../../models/auth.model';
                     </div>
                     <div class="flex flex-col gap-2">
                         <label for="register-password" class="text-surface-900 dark:text-surface-0 font-medium">Пароль</label>
-                        <p-password 
-                            id="register-password" 
-                            [(ngModel)]="registerForm.password" 
-                            placeholder="Пароль" 
+                        <p-password
+                            id="register-password"
+                            [(ngModel)]="registerForm.password"
+                            placeholder="Пароль"
                             [toggleMask]="true"
-                            [feedback]="true"
+                            [feedback]="false"
                             name="registerPassword"
+                            [styleClass]="'w-full'"
+                            [fluid]="true"
+                            required></p-password>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="register-confirm-password" class="text-surface-900 dark:text-surface-0 font-medium">Подтвердите пароль</label>
+                        <p-password
+                            id="register-confirm-password"
+                            [(ngModel)]="confirmPassword"
+                            placeholder="Подтвердите пароль"
+                            [toggleMask]="true"
+                            [feedback]="false"
+                            name="registerConfirmPassword"
                             [styleClass]="'w-full'"
                             [fluid]="true"
                             required></p-password>
@@ -140,9 +153,9 @@ import { RegisterRequest, LoginRequest } from '../../models/auth.model';
                         </ul>
                     </div>
                     <p-message *ngIf="registerSuccess" severity="success" [text]="'Регистрация успешна! Теперь вы можете войти.'"></p-message>
-                    <p-button 
-                        type="submit" 
-                        label="Зарегистрироваться" 
+                    <p-button
+                        type="submit"
+                        label="Зарегистрироваться"
                         [loading]="isLoading()"
                         [styleClass]="'w-full'"
                         styleClass="w-full"></p-button>
@@ -170,6 +183,8 @@ export class AuthComponent {
         password: '',
         userName: ''
     };
+
+    confirmPassword: string = '';
 
     constructor(
         private authService: AuthService,
@@ -201,6 +216,7 @@ export class AuthComponent {
     resetForms(): void {
         this.loginForm = { email: '', password: '' };
         this.registerForm = { email: '', password: '', userName: '' };
+        this.confirmPassword = '';
         this.loginError = '';
         this.registerError = '';
         this.registerPasswordRequirements = [];
@@ -235,8 +251,13 @@ export class AuthComponent {
     }
 
     onRegister(): void {
-        if (!this.registerForm.email || !this.registerForm.password || !this.registerForm.userName) {
+        if (!this.registerForm.email || !this.registerForm.password || !this.registerForm.userName || !this.confirmPassword) {
             this.registerError = 'Пожалуйста, заполните все поля';
+            return;
+        }
+
+        if (this.registerForm.password !== this.confirmPassword) {
+            this.registerError = 'Пароли не совпадают';
             return;
         }
 
