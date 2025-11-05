@@ -1,14 +1,18 @@
-import { Component } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { MenuItem } from 'primeng/api';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { StyleClassModule } from 'primeng/styleclass';
+import { ButtonModule } from 'primeng/button';
 import { LayoutService } from '../service/layout.service';
+import { AuthComponent } from '../../shared/components/auth/auth.component';
+import { AuthStateService } from '../../shared/services/auth-state.service';
+import { AuthService } from '../../shared/services/auth.service';
 
 @Component({
     selector: 'app-topbar',
     standalone: true,
-    imports: [RouterModule, CommonModule, StyleClassModule],
+    imports: [RouterModule, CommonModule, StyleClassModule, ButtonModule, AuthComponent],
     template: ` <div class="layout-topbar">
         <div class="layout-topbar-logo-container">
             <a class="layout-topbar-logo" routerLink="/">
@@ -59,21 +63,56 @@ import { LayoutService } from '../service/layout.service';
 
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-user"></i>
-                        <span>Profile</span>
-                    </button>
+                    <ng-container *ngIf="authStateService.getIsAuthenticated(); else notAuthenticated">
+                        <div class="flex items-center gap-3">
+                            <div class="flex flex-col items-end">
+                                <span class="text-surface-900 dark:text-surface-0 font-medium">
+                                    {{ authStateService.getUser()?.userName }}
+                                </span>
+                                <span class="text-xs text-surface-500 dark:text-surface-400">
+                                    {{ authStateService.getUser()?.email }}
+                                </span>
+                            </div>
+                            <button type="button" class="layout-topbar-action" (click)="logout()" pRipple>
+                                <i class="pi pi-sign-out"></i>
+                                <span>Выйти</span>
+                            </button>
+                        </div>
+                    </ng-container>
+                    <ng-template #notAuthenticated>
+                        <button type="button" class="layout-topbar-action" (click)="showAuthDialog()" pRipple>
+                            <i class="pi pi-user"></i>
+                            <span>Войти</span>
+                        </button>
+                    </ng-template>
                 </div>
             </div>
+            <app-auth #authComponent></app-auth>
         </div>
     </div>`
 })
 export class AppTopbar {
     items!: MenuItem[];
 
-    constructor(public layoutService: LayoutService, public router: Router)  {}
+    @ViewChild('authComponent') authComponent!: AuthComponent;
+
+    constructor(
+        public layoutService: LayoutService, 
+        public router: Router,
+        public authStateService: AuthStateService,
+        private authService: AuthService
+    ) {}
 
     toggleDarkMode() {
         this.layoutService.layoutConfig.update((state) => ({ ...state, darkTheme: !state.darkTheme }));
+    }
+
+    showAuthDialog(): void {
+        this.authComponent.show();
+    }
+
+    logout(): void {
+        this.authService.removeToken();
+        this.authStateService.clearUser();
     }
 }
