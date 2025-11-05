@@ -26,15 +26,15 @@ export class LearningArticleComponent implements OnInit {
   }
 
   isVideoContent(content: string): boolean {
-    return content.includes('youtube.com') || 
-           content.includes('youtu.be') || 
+    return content.includes('youtube.com') ||
+           content.includes('youtu.be') ||
            content.includes('vimeo.com') ||
            content.includes('youtube-nocookie.com');
   }
 
   getVideoEmbedUrl(url: string): SafeResourceUrl {
     let embedUrl: string;
-    
+
     if (url.includes('youtube.com/watch?v=')) {
       const videoId = url.split('v=')[1].split('&')[0];
       embedUrl = `https://www.youtube.com/embed/${videoId}`;
@@ -53,7 +53,7 @@ export class LearningArticleComponent implements OnInit {
     } else {
       embedUrl = url;
     }
-    
+
     return this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl);
   }
 
@@ -63,5 +63,40 @@ export class LearningArticleComponent implements OnInit {
 
   trackByContentItemOrder(index: number, item: LearningArticleContentItem): number {
     return item.order;
+  }
+
+  downloadMusicXml(content: string, sectionTitle?: string, order?: number): void {
+    try {
+      const blob = new Blob([content], { type: 'application/xml' });
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+
+      let fileName: string;
+      if (sectionTitle) {
+        const sanitizedTitle = sectionTitle.replace(/[^a-zа-яё0-9]/gi, '_').toLowerCase();
+        if (order !== undefined && order !== null) {
+          fileName = `${sanitizedTitle}_${order}.musicxml`;
+        } else {
+          fileName = `${sanitizedTitle}.musicxml`;
+        }
+      } else {
+        if (order !== undefined && order !== null) {
+          fileName = `music_score_${order}.musicxml`;
+        } else {
+          fileName = 'music_score.musicxml';
+        }
+      }
+
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading MusicXML file:', error);
+    }
   }
 }
