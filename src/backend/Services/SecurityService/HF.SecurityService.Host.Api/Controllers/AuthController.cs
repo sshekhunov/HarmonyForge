@@ -31,7 +31,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred during registration." });
+            return StatusCode(500, new { message = "Возникла ошибка при регистрации." });
         }
     }
 
@@ -44,14 +44,14 @@ public class AuthController : ControllerBase
             
             if (result == null)
             {
-                return Unauthorized(new { message = "Invalid email or password." });
+                return Unauthorized(new { message = "Неверный email или пароль." });
             }
 
             return Ok(result);
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred during login." });
+            return StatusCode(500, new { message = "Возникла ошибка при авторизации." });
         }
     }
 }

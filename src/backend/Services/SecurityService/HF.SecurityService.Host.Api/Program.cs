@@ -82,9 +82,12 @@ namespace HF.SecurityService.Host.Api
             if (app.Environment.IsDevelopment())
             {
                 app.MapOpenApi();
+                // Don't redirect to HTTPS in development when accessed via gateway
             }
-
-            app.UseHttpsRedirection();
+            else
+            {
+                app.UseHttpsRedirection();
+            }
 
             // Use CORS
             app.UseCors("AllowLocalhost4200");

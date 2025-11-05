@@ -21,6 +21,11 @@
         "Path": "Services\\LearningCourseService\\HF.LearningCourseService.Host.Api\\HF.LearningCourseService.Host.Api.csproj",
         "Action": "Start",
         "DebugTarget": "http"
+      },
+      {
+        "Path": "Services\\SecurityService\\HF.SecurityService.Host.Api\\HF.SecurityService.Host.Api.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
       }
     ]
   }
