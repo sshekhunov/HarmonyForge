@@ -133,6 +133,12 @@ import { RegisterRequest, LoginRequest } from '../../models/auth.model';
                             required></p-password>
                     </div>
                     <p-message *ngIf="registerError" severity="error" [text]="registerError"></p-message>
+                    <div *ngIf="registerPasswordRequirements.length > 0" class="mt-2 p-3 bg-surface-100 dark:bg-surface-800 rounded-lg">
+                        <p class="text-sm font-medium text-surface-900 dark:text-surface-0 mb-2">Требования к паролю:</p>
+                        <ul class="list-disc list-inside text-sm text-surface-700 dark:text-surface-300 space-y-1">
+                            <li *ngFor="let req of registerPasswordRequirements">{{ req }}</li>
+                        </ul>
+                    </div>
                     <p-message *ngIf="registerSuccess" severity="success" [text]="'Регистрация успешна! Теперь вы можете войти.'"></p-message>
                     <p-button 
                         type="submit" 
@@ -151,6 +157,7 @@ export class AuthComponent {
     loginMode = signal(true);
     loginError = '';
     registerError = '';
+    registerPasswordRequirements: string[] = [];
     registerSuccess = false;
 
     loginForm: LoginRequest = {
@@ -196,6 +203,7 @@ export class AuthComponent {
         this.registerForm = { email: '', password: '', userName: '' };
         this.loginError = '';
         this.registerError = '';
+        this.registerPasswordRequirements = [];
         this.registerSuccess = false;
     }
 
@@ -234,6 +242,7 @@ export class AuthComponent {
 
         this.isLoading.set(true);
         this.registerError = '';
+        this.registerPasswordRequirements = [];
         this.registerSuccess = false;
 
         this.authService.register(this.registerForm).subscribe({
@@ -250,8 +259,15 @@ export class AuthComponent {
                 this.isLoading.set(false);
                 if (error.error?.message) {
                     this.registerError = error.error.message;
+                    // Get password requirements if provided
+                    if (error.error?.passwordRequirements && Array.isArray(error.error.passwordRequirements)) {
+                        this.registerPasswordRequirements = error.error.passwordRequirements;
+                    } else {
+                        this.registerPasswordRequirements = [];
+                    }
                 } else {
                     this.registerError = 'Ошибка регистрации. Пользователь может уже существовать.';
+                    this.registerPasswordRequirements = [];
                 }
             }
         });

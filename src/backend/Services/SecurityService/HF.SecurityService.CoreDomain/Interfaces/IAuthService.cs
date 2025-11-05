@@ -4,7 +4,8 @@ namespace HF.SecurityService.CoreDomain.Interfaces;
 
 public interface IAuthService
 {
-    Task<AuthResponseDto?> RegisterAsync(RegisterRequestDto request);
+    Task<RegisterResultDto> RegisterAsync(RegisterRequestDto request);
     Task<AuthResponseDto?> LoginAsync(LoginRequestDto request);
+    List<string> GetPasswordRequirements();
 }
 

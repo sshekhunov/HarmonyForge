@@ -3,6 +3,7 @@ using HF.SecurityService.CoreDomain.Entities;
 using HF.SecurityService.CoreDomain.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -14,19 +15,28 @@ public class AuthService : IAuthService
 {
     private readonly UserManager<User> _userManager;
     private readonly IConfiguration _configuration;
+    private readonly PasswordOptions _passwordOptions;
 
-    public AuthService(UserManager<User> userManager, IConfiguration configuration)
+    public AuthService(
+        UserManager<User> userManager, 
+        IConfiguration configuration,
+        IOptions<IdentityOptions> identityOptions)
     {
         _userManager = userManager;
         _configuration = configuration;
+        _passwordOptions = identityOptions.Value.Password;
     }
 
-    public async Task<AuthResponseDto?> RegisterAsync(RegisterRequestDto request)
-    {
+    public async Task<RegisterResultDto> RegisterAsync(RegisterRequestDto request)
+    {       
         var existingUser = await _userManager.FindByEmailAsync(request.Email);
         if (existingUser != null)
         {
-            return null; 
+            return new RegisterResultDto
+            {
+                IsSuccess = false,
+                ErrorMessage = "Пользователь с таким email уже зарегистрирован"
+            };
         }
 
         var user = new User
@@ -39,21 +49,73 @@ public class AuthService : IAuthService
         var result = await _userManager.CreateAsync(user, request.Password);
 
         if (!result.Succeeded)
-        {
-            return null;
+        {           
+            var passwordErrors = result.Errors
+                .Where(e => e.Code.Contains("Password", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (passwordErrors.Any())
+            {
+                var requirements = GetPasswordRequirements();
+                return new RegisterResultDto
+                {
+                    IsSuccess = false,
+                    ErrorMessage = "Пароль не удовлетворяет требованиям безопасности",
+                    PasswordRequirements = requirements
+                };
+            }
+
+            return new RegisterResultDto
+            {
+                IsSuccess = false,
+                ErrorMessage = string.Join("; ", result.Errors.Select(e => e.Description))
+            };
         }
 
         var token = GenerateJwtToken(user);
         var expiresAt = DateTime.UtcNow.AddHours(24);
 
-        return new AuthResponseDto
+        return new RegisterResultDto
         {
-            Token = token,
-            UserId = user.Id.ToString(),
-            Email = user.Email ?? string.Empty,
-            UserName = user.UserName ?? string.Empty,
-            ExpiresAt = expiresAt
+            IsSuccess = true,
+            AuthResponse = new AuthResponseDto
+            {
+                Token = token,
+                UserId = user.Id.ToString(),
+                Email = user.Email ?? string.Empty,
+                UserName = user.UserName ?? string.Empty,
+                ExpiresAt = expiresAt
+            }
         };
+    }
+
+    public List<string> GetPasswordRequirements()
+    {
+        var requirements = new List<string>();
+
+        requirements.Add($"Минимальная длина: {_passwordOptions.RequiredLength} символов");
+
+        if (_passwordOptions.RequireDigit)
+        {
+            requirements.Add("Должен содержать хотя бы одну цифру (0-9)");
+        }
+
+        if (_passwordOptions.RequireLowercase)
+        {
+            requirements.Add("Должен содержать хотя бы одну строчную букву (a-z)");
+        }
+
+        if (_passwordOptions.RequireUppercase)
+        {
+            requirements.Add("Должен содержать хотя бы одну заглавную букву (A-Z)");
+        }
+
+        if (_passwordOptions.RequireNonAlphanumeric)
+        {
+            requirements.Add("Должен содержать хотя бы один специальный символ (!@#$%^&* и т.д.)");
+        }
+
+        return requirements;
     }
 
     public async Task<AuthResponseDto?> LoginAsync(LoginRequestDto request)

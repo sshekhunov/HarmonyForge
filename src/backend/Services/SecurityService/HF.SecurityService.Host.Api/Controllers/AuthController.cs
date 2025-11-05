@@ -16,22 +16,26 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterRequestDto request)
+    public async Task<ActionResult> Register([FromBody] RegisterRequestDto request)
     {
         try
         {
             var result = await _authService.RegisterAsync(request);
             
-            if (result == null)
+            if (!result.IsSuccess)
             {
-                return BadRequest(new { message = "Registration failed. User may already exist or password does not meet requirements." });
+                var response = new { 
+                    message = result.ErrorMessage,
+                    passwordRequirements = result.PasswordRequirements 
+                };
+                return BadRequest(response);
             }
 
-            return Ok(result);
+            return Ok(result.AuthResponse);
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Возникла ошибка при регистрации." });
+            return StatusCode(500, new { message = "РџСЂРѕРёР·РѕС€Р»Р° РѕС€РёР±РєР° РїСЂРё СЂРµРіРёСЃС‚СЂР°С†РёРё." });
         }
     }
 
@@ -44,15 +48,14 @@ public class AuthController : ControllerBase
             
             if (result == null)
             {
-                return Unauthorized(new { message = "Неверный email или пароль." });
+                return Unauthorized(new { message = "РќРµРІРµСЂРЅС‹Р№ email РёР»Рё РїР°СЂРѕР»СЊ." });
             }
 
             return Ok(result);
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Возникла ошибка при авторизации." });
+            return StatusCode(500, new { message = "РџСЂРѕРёР·РѕС€Р»Р° РѕС€РёР±РєР° РїСЂРё РІС…РѕРґРµ." });
         }
     }
 }
-
