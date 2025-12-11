@@ -35,51 +35,14 @@
   </div>
 </div>
 
-<!-- Courses List -->
+<!-- Courses Section -->
 <div *ngIf="!loading && !error && courses.length > 0" class="courses-section">
 
-
-  <!-- Courses List Container -->
-  <div class="list-container">
-    <!-- Course Item -->
-    <div *ngFor="let course of courses; trackBy: trackByCourseId" class="list-item">
-      <!-- Main Item Content -->
-      <div class="item-content">
-        <!-- Left Section - Icon and Info -->
-        <div class="item-left">
-          <div class="item-info">
-            <h3 class="item-title">{{ course.title }}</h3>
-            <p class="item-description">{{ course.description }}</p>
-          </div>
-        </div>
-
-        <!-- Right Section - Tags and Action -->
-        <div class="item-right">
-          <div class="item-action">
-            <p-button
-              label="Начать курс"
-              icon="pi pi-play"
-              (onClick)="onCourseSelected(course)"
-              [size]="'small'"
-              [rounded]="true">
-            </p-button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Expandable Details Section -->
-      <div *ngIf="course.modules && course.modules.length > 0" class="item-details">
-        <div class="modules-preview">
-          <h4 class="modules-title">Модули курса</h4>
-          <div class="modules-list">
-            <div *ngFor="let module of course.modules; trackBy: trackByModuleId" class="module-item">
-              <span class="module-number">{{ getModuleNumber(module) }}.</span>
-              <span class="module-name">{{ module.title }}</span>
-              <span class="module-description">{{ module.description }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="courses-grid">
+    <app-course-card
+      *ngFor="let course of courses; trackBy: trackByCourseId"
+      [course]="course"
+      (courseSelected)="onCourseSelected($event)">
+    </app-course-card>
   </div>
 </div>

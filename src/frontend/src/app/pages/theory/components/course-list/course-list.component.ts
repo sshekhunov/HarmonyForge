@@ -5,11 +5,12 @@ import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { LearningCourse, LearningModule } from '../../models/learning-course.model';
+import { CourseCardComponent } from '../course-card/course-card.component';
 
 @Component({
   selector: 'app-course-list',
   standalone: true,
-  imports: [CommonModule, ButtonModule, CardModule, TagModule, ProgressSpinnerModule],
+  imports: [CommonModule, ButtonModule, CardModule, TagModule, ProgressSpinnerModule, CourseCardComponent],
   templateUrl: './course-list.component.html',
   styleUrls: ['./course-list.component.scss']
 })
@@ -32,10 +33,6 @@ export class CourseListComponent implements OnInit {
 
   onRetryLoad() {
     this.retryLoad.emit();
-  }
-
-  getModuleCount(course: LearningCourse): number {
-    return course.modules?.length || 0;
   }
 
   getModuleNumber(module: LearningModule): number {

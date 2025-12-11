@@ -1,0 +1,42 @@
+<div class="course-card" (click)="onCardClick()">
+  <div class="card-progress-section">
+    <div class="circular-progress-container">
+      <svg class="circular-progress" viewBox="0 0 36 36">
+        <circle class="progress-ring-bg" cx="18" cy="18" r="16" fill="none" stroke="#e0e0e0" stroke-width="3"></circle>
+        <circle class="progress-ring"
+                cx="18"
+                cy="18"
+                r="16"
+                fill="none"
+                stroke="#4caf50"
+                stroke-width="3"
+                [attr.stroke-dasharray]="getProgressDashArray()"
+                [attr.stroke-dashoffset]="getProgressDashOffset()"
+                transform="rotate(-90 18 18)"></circle>
+      </svg>
+      <button type="button" class="play-button" (click)="onPlayButtonClick($event)">
+        <i class="pi pi-play"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="card-content">
+    <h3 class="card-title">{{ course.title }}</h3>
+    <p class="card-description">{{ course.description }}</p>
+  </div>
+
+  <div class="card-stats">
+    <div class="stat-item">
+      <span class="stat-value">{{ getModuleCount() }}</span>
+      <span class="stat-label">Модулей</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value">{{ getItemCount() }}</span>
+      <span class="stat-label">Элементов</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value">{{ getCompletionPercentage() }}%</span>
+    </div>
+  </div>
+</div>
+
