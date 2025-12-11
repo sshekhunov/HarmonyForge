@@ -1,6 +1,8 @@
 import {AfterViewInit, Component, Input, OnChanges, SimpleChanges} from '@angular/core';
 import {Guid} from 'guid-typescript';
 import {OpenSheetMusicDisplay} from 'opensheetmusicdisplay';
+import {ButtonModule} from 'primeng/button';
+import {CommonModule} from '@angular/common';
 
 export class NotePosition {
   constructor(
@@ -23,7 +25,8 @@ export class HighlightedNote {
   standalone: true,
   selector: 'lib-osmd-renderer',
   templateUrl: './osmd-renderer.component.html',
-  styleUrls: ['./osmd-renderer.component.css']
+  styleUrls: ['./osmd-renderer.component.css'],
+  imports: [CommonModule, ButtonModule]
 })
 export class OsmdRendererComponent implements OnChanges, AfterViewInit {
 
@@ -33,6 +36,8 @@ export class OsmdRendererComponent implements OnChanges, AfterViewInit {
   @Input() highlightedNotes?: HighlightedNote[];
 
   @Input() showTitleAndAuthor: boolean = true;
+
+  @Input() partName?: string;
 
   private openSheetMusicDisplay?: OpenSheetMusicDisplay;
   private previousHighlightedNotes: HighlightedNote[] = [];
@@ -240,6 +245,37 @@ export class OsmdRendererComponent implements OnChanges, AfterViewInit {
     }
   }
 
+  downloadMusicXml(): void {
+    if (!this.source) {
+      console.warn('No MusicXML source available for download');
+      return;
+    }
+
+    try {
+      const blob = new Blob([this.source], { type: 'application/xml' });
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+
+      let fileName: string;
+      if (this.partName) {
+        const sanitizedPartName = this.partName.replace(/[^a-zа-яё0-9]/gi, '_').toLowerCase();
+        fileName = `${sanitizedPartName}.musicxml`;
+      } else {
+        fileName = 'music_score.musicxml';
+      }
+
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading MusicXML file:', error);
+    }
+  }
 
 }
 

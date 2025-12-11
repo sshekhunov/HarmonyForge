@@ -67,38 +67,20 @@ export class LearningArticleComponent implements OnInit {
     return item.order;
   }
 
-  downloadMusicXml(content: string, sectionTitle?: string, order?: number): void {
-    try {
-      const blob = new Blob([content], { type: 'application/xml' });
-      const url = window.URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = url;
-
-      let fileName: string;
-      if (sectionTitle) {
-        const sanitizedTitle = sectionTitle.replace(/[^a-zа-яё0-9]/gi, '_').toLowerCase();
-        if (order !== undefined && order !== null) {
-          fileName = `${sanitizedTitle}_${order}.musicxml`;
-        } else {
-          fileName = `${sanitizedTitle}.musicxml`;
-        }
+  getPartName(sectionTitle?: string, order?: number): string {
+    if (sectionTitle) {
+      const sanitizedTitle = sectionTitle.replace(/[^a-zа-яё0-9]/gi, '_').toLowerCase();
+      if (order !== undefined && order !== null) {
+        return `${sanitizedTitle}_${order}`;
       } else {
-        if (order !== undefined && order !== null) {
-          fileName = `music_score_${order}.musicxml`;
-        } else {
-          fileName = 'music_score.musicxml';
-        }
+        return sanitizedTitle;
       }
-
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading MusicXML file:', error);
+    } else {
+      if (order !== undefined && order !== null) {
+        return `music_score_${order}`;
+      } else {
+        return 'music_score';
+      }
     }
   }
 }

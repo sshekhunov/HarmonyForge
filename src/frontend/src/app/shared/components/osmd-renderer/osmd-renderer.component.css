@@ -1,0 +1,22 @@
+.osmd-container {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.osmd-content {
+  width: 100%;
+}
+
+.osmd-download-button {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  z-index: 10;
+  padding: 8px;
+}
+
+.osmd-download-button.with-title {
+  bottom: 40px;
+}
+
