@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -14,21 +14,71 @@ import { LearningArticle, LearningArticleWithModule } from '../../models/learnin
   templateUrl: './course-detail.component.html',
   styleUrls: ['./course-detail.component.scss']
 })
-export class CourseDetailComponent implements OnInit {
+export class CourseDetailComponent implements OnInit, OnChanges {
   @Input() course: LearningCourse | null = null;
   @Input() articlesByModule: { [moduleId: string]: LearningArticleWithModule[] } = {};
   @Input() loading = false;
   @Input() error: string | null = null;
   @Input() expandedModules: Set<string> = new Set();
-  
+
   @Output() goBack = new EventEmitter<void>();
   @Output() articleSelected = new EventEmitter<{article: LearningArticle, module: LearningModule}>();
   @Output() moduleToggled = new EventEmitter<string>();
   @Output() retryLoad = new EventEmitter<void>();
 
+  selectedModuleId: string | null = null;
+  moduleProgress: Map<string, number> = new Map();
+
   constructor() { }
 
   ngOnInit(): void {
+    this.initializeModuleProgress();
+    this.selectFirstModule();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['course'] && this.course) {
+      this.initializeModuleProgress();
+      const previousCourse = changes['course'].previousValue;
+      if (!previousCourse || previousCourse.id !== this.course.id) {
+        this.selectedModuleId = null;
+        this.selectFirstModule();
+      } else if (!this.selectedModuleId) {
+        this.selectFirstModule();
+      }
+    }
+  }
+
+  private initializeModuleProgress(): void {
+    if (this.course?.modules) {
+      this.course.modules.forEach(module => {
+        if (!this.moduleProgress.has(module.id)) {
+          const randomProgress = Math.floor(Math.random() * 100);
+          this.moduleProgress.set(module.id, randomProgress);
+        }
+      });
+    }
+  }
+
+  private selectFirstModule(): void {
+    if (this.course?.modules && this.course.modules.length > 0 && !this.selectedModuleId) {
+      this.selectedModuleId = this.course.modules[0].id;
+    }
+  }
+
+  getModuleProgress(moduleId: string): number {
+    return this.moduleProgress.get(moduleId) || 0;
+  }
+
+  getProgressDashArray(moduleId: string): string {
+    const circumference = 2 * Math.PI * 12;
+    return `${circumference} ${circumference}`;
+  }
+
+  getProgressDashOffset(moduleId: string): number {
+    const percentage = this.getModuleProgress(moduleId);
+    const circumference = 2 * Math.PI * 12;
+    return circumference - (percentage / 100) * circumference;
   }
 
   onGoBack() {
@@ -41,6 +91,28 @@ export class CourseDetailComponent implements OnInit {
 
   onModuleToggled(moduleId: string) {
     this.moduleToggled.emit(moduleId);
+  }
+
+  onModuleSelected(moduleId: string) {
+    this.selectedModuleId = moduleId;
+  }
+
+  isModuleSelected(moduleId: string): boolean {
+    return this.selectedModuleId === moduleId;
+  }
+
+  getSelectedModuleArticles(): LearningArticleWithModule[] {
+    if (!this.selectedModuleId) {
+      return [];
+    }
+    return this.articlesByModule[this.selectedModuleId] || [];
+  }
+
+  getSelectedModule(): LearningModule | null {
+    if (!this.selectedModuleId || !this.course) {
+      return null;
+    }
+    return this.course.modules.find(m => m.id === this.selectedModuleId) || null;
   }
 
   onRetryLoad() {
