@@ -5,12 +5,14 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { DividerModule } from 'primeng/divider';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { OsmdRendererModule } from '@/shared/components/osmd-renderer/osmd-renderer.module';
 import { LearningArticle, LearningArticleContentSection, LearningArticleContentItem } from '../../models/learning-article.model';
 
 @Component({
   selector: 'app-learning-article',
   standalone: true,
-  imports: [CommonModule, ButtonModule, CardModule, TagModule, DividerModule],
+  imports: [CommonModule, ButtonModule, CardModule, TagModule, DividerModule, ProgressSpinnerModule, OsmdRendererModule],
   templateUrl: './learning-article.component.html',
   styleUrls: ['./learning-article.component.scss']
 })
@@ -18,6 +20,7 @@ export class LearningArticleComponent implements OnInit {
   @Input() article: LearningArticle | null = null;
   @Input() moduleTitle: string = '';
   @Input() moduleDescription: string = '';
+  @Input() loading: boolean = false;
 
   constructor(private sanitizer: DomSanitizer) { }
 
@@ -25,15 +28,15 @@ export class LearningArticleComponent implements OnInit {
   }
 
   isVideoContent(content: string): boolean {
-    return content.includes('youtube.com') || 
-           content.includes('youtu.be') || 
+    return content.includes('youtube.com') ||
+           content.includes('youtu.be') ||
            content.includes('vimeo.com') ||
            content.includes('youtube-nocookie.com');
   }
 
   getVideoEmbedUrl(url: string): SafeResourceUrl {
     let embedUrl: string;
-    
+
     if (url.includes('youtube.com/watch?v=')) {
       const videoId = url.split('v=')[1].split('&')[0];
       embedUrl = `https://www.youtube.com/embed/${videoId}`;
@@ -52,7 +55,7 @@ export class LearningArticleComponent implements OnInit {
     } else {
       embedUrl = url;
     }
-    
+
     return this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl);
   }
 
@@ -62,5 +65,22 @@ export class LearningArticleComponent implements OnInit {
 
   trackByContentItemOrder(index: number, item: LearningArticleContentItem): number {
     return item.order;
+  }
+
+  getPartName(sectionTitle?: string, order?: number): string {
+    if (sectionTitle) {
+      const sanitizedTitle = sectionTitle.replace(/[^a-zа-яё0-9]/gi, '_').toLowerCase();
+      if (order !== undefined && order !== null) {
+        return `${sanitizedTitle}_${order}`;
+      } else {
+        return sanitizedTitle;
+      }
+    } else {
+      if (order !== undefined && order !== null) {
+        return `music_score_${order}`;
+      } else {
+        return 'music_score';
+      }
+    }
   }
 }

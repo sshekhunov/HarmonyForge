@@ -13,5 +13,6 @@ public enum LearningArticleContentItemType
 {
     Text,
     Image,
-    YouTubeVideo
+    YouTubeVideo,
+    MusicXml
 }

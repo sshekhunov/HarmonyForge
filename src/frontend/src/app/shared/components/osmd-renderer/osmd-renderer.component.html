@@ -1,1 +1,11 @@
-<div id="{{id}}"></div>
+<div class="osmd-container">
+  <div id="{{id}}" class="osmd-content"></div>
+  <div class="osmd-download-button" [class.with-title]="showTitleAndAuthor">
+    <p-button
+      label="Скачать"
+      icon="pi pi-download"
+      [outlined]="true"
+      (onClick)="downloadMusicXml()"
+      size="small"></p-button>
+  </div>
+</div>

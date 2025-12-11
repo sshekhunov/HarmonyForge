@@ -1,4 +1,17 @@
-<div class="learning-article-container" *ngIf="article">
+<!-- Loading State -->
+<div *ngIf="loading" class="loading-container">
+  <div class="loading-content">
+    <p-progressSpinner
+      [style]="{'width': '50px', 'height': '50px'}"
+      strokeWidth="4"
+      fill="transparent"
+      animationDuration="1s">
+    </p-progressSpinner>
+    <p class="loading-text">Загрузка...</p>
+  </div>
+</div>
+
+<div class="learning-article-container" *ngIf="article && !loading">
   <!-- Article Content -->
   <div class="article-content">
     <div *ngIf="article.contentSections.length === 0" class="no-content">
@@ -55,6 +68,17 @@
               </div>
             </div>
           </div>
+
+          <!-- MusicXml Content -->
+          <div *ngIf="contentItem.type === 3" class="musicxml-content">
+            <div class="content-wrapper">
+              <lib-osmd-renderer
+                [source]="contentItem.content"
+                [showTitleAndAuthor]="false"
+                [partName]="getPartName(section.title, contentItem.order)">
+              </lib-osmd-renderer>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -62,7 +86,7 @@
 </div>
 
 <!-- No Article State -->
-<div *ngIf="!article" class="no-article">
+<div *ngIf="!article && !loading" class="no-article">
   <i class="pi pi-file-o no-article-icon"></i>
   <p>Статья не найдена или не загружена.</p>
 </div>

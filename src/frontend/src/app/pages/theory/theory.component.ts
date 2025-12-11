@@ -35,6 +35,7 @@ export class TheoryComponent implements OnInit, OnDestroy {
     showArticleDetail = false;
     selectedArticle: LearningArticle | null = null;
     selectedModule: LearningModule | null = null;
+    articleLoading = false;
 
     // Route parameters
     currentCourseId: string | null = null;
@@ -149,9 +150,11 @@ export class TheoryComponent implements OnInit, OnDestroy {
     }
 
     private loadArticleById(articleId: string) {
+        this.articleLoading = true;
         this.learningArticleService.getArticleById(articleId).subscribe({
             next: (article) => {
                 this.selectedArticle = article;
+                this.articleLoading = false;
                 // Find the module for this article
                 if (this.selectedCourse) {
                     const module = this.selectedCourse.modules.find(m => m.id === article.learningModuleId);
@@ -161,6 +164,7 @@ export class TheoryComponent implements OnInit, OnDestroy {
                 }
             },
             error: (error) => {
+                this.articleLoading = false;
                 console.error('Error loading article:', error);
                 // Fallback: try to find article in already loaded articles
                 this.findArticleInLoadedData(articleId);
@@ -175,6 +179,7 @@ export class TheoryComponent implements OnInit, OnDestroy {
             const article = articles.find(a => a.article.id === articleId);
             if (article) {
                 this.selectedArticle = article.article;
+                this.articleLoading = false;
                 if (this.selectedCourse) {
                     const module = this.selectedCourse.modules.find(m => m.id === moduleId);
                     if (module) {
