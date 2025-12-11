@@ -73,8 +73,8 @@
           <div *ngIf="contentItem.type === 3" class="musicxml-content">
             <div class="content-wrapper relative">
 
-              <lib-osmd-renderer [source]="contentItem.content"></lib-osmd-renderer>
-              <div class="absolute bottom-15 right-0 z-10">
+              <lib-osmd-renderer [source]="contentItem.content" [showTitleAndAuthor]="false"></lib-osmd-renderer>
+              <div class="absolute bottom-0 right-0 z-0">
                 <p-button
                   label="Скачать"
                   icon="pi pi-download"
