@@ -11,6 +11,20 @@
   </div>
 </div>
 
+<div class="article-detail-page" *ngIf="loadFromRoute">
+  <div class="article-header" *ngIf="article">
+    <a class="back-link" (click)="onGoBack()">
+      <i class="pi pi-arrow-left"></i> Назад к модулям
+    </a>
+    <div class="article-title-section">
+      <h1 class="article-title">{{ article.title }}</h1>
+      <div class="article-meta" *ngIf="moduleTitle">
+        <h2 class="module-title">{{ moduleTitle }}</h2>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="learning-article-container" *ngIf="article && !loading">
   <!-- Article Content -->
   <div class="article-content">
