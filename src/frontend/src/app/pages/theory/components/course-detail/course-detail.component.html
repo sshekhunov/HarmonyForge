@@ -1,4 +1,4 @@
-<!-- Articles Loading State -->
+<!-- Loading State -->
 <div *ngIf="loading" class="loading-container">
   <div class="loading-content">
     <p-progressSpinner
@@ -11,7 +11,7 @@
   </div>
 </div>
 
-<!-- Articles Error State -->
+<!-- Error State -->
 <div *ngIf="error && !loading" class="error-container">
   <div class="error-content">
     <i class="pi pi-exclamation-triangle error-icon"></i>
@@ -26,48 +26,78 @@
   </div>
 </div>
 
-<!-- Articles Content -->
-<div *ngIf="!loading && !error" class="articles-content">
-  <!-- Modules with Articles -->
-  <div class="modules-container">
-    <div *ngFor="let moduleWithArticles of getModulesWithArticles(); trackBy: trackByModuleId"
-         class="module-card">
+<div *ngIf="!loading && !error && course" class="course-detail-container">
+  <!-- Header -->
+  <div class="course-header">
+    <a class="back-link" (click)="onGoBack()">
+      <i class="pi pi-arrow-left"></i> Назад к курсам
+    </a>
+    <div class="course-header-content course-title-section">
+      <h1 class="course-title">{{ course.title }}</h1>
+      <h2 class="course-subtitle" *ngIf="course.description">{{ course.description }}</h2>
+    </div>
+  </div>
 
-      <!-- Module Header -->
-      <div class="module-header" (click)="onModuleToggled(moduleWithArticles.id)">
+  <div class="course-content">
+    <div class="modules-sidebar">
+      <div *ngFor="let module of course.modules; trackBy: trackByModuleId"
+           class="module-item"
+           [class.active]="isModuleSelected(module.id)"
+           (click)="onModuleSelected(module.id)">
+        <div class="module-progress-circle">
+          <svg class="progress-svg" viewBox="0 0 28 28">
+            <circle class="progress-ring-bg" cx="14" cy="14" r="12" fill="none" stroke="#e0e0e0" stroke-width="2"></circle>
+            <circle class="progress-ring"
+                    cx="14"
+                    cy="14"
+                    r="12"
+                    fill="none"
+                    stroke="#4caf50"
+                    stroke-width="2"
+                    [attr.stroke-dasharray]="getProgressDashArray(module.id)"
+                    [attr.stroke-dashoffset]="getProgressDashOffset(module.id)"
+                    transform="rotate(-90 14 14)"></circle>
+          </svg>
+          <div class="progress-fill" *ngIf="isModuleSelected(module.id)"></div>
+        </div>
         <div class="module-info">
-          <h3 class="module-title">{{ getModuleNumber(moduleWithArticles) }}. {{ moduleWithArticles.title }}</h3>
-          <p class="module-description" *ngIf="moduleWithArticles.description">
-            {{ moduleWithArticles.description }}
+          <h3 class="module-title">{{ module.title }}</h3>
+          <p class="module-description" *ngIf="module.description">
+            {{ module.description }}
           </p>
         </div>
-        <div class="module-stats">
-          <i class="pi pi-chevron-down module-toggle"
-             [class.pi-chevron-up]="isModuleExpanded(moduleWithArticles.id)"></i>
-        </div>
       </div>
+    </div>
 
-      <!-- Articles List -->
-      <div class="articles-list"
-           *ngIf="moduleWithArticles.articles.length > 0 && isModuleExpanded(moduleWithArticles.id)">
-        <div *ngFor="let articleWithModule of moduleWithArticles.articles; trackBy: trackByArticleId"
-             class="article-item" (click)="onArticleSelected(articleWithModule.article, moduleWithArticles)">
-          <div class="article-content">
-            <div class="article-header">
-              <h4 class="article-title">{{ getModuleNumber(moduleWithArticles) }}.{{ getArticleNumber(articleWithModule.article) }}. {{ getArticleTitle(articleWithModule.article) }}</h4>
+    <div class="articles-content">
+      <div *ngIf="getSelectedModule()" class="selected-module-content">
+        <div class="module-header">
+          <h2 class="module-content-title">{{ getSelectedModule()?.title }}</h2>
+          <p class="module-content-description" *ngIf="getSelectedModule()?.description">
+            {{ getSelectedModule()?.description }}
+          </p>
+        </div>
+
+        <div class="articles-list">
+          <div *ngFor="let articleWithModule of getSelectedModuleArticles(); trackBy: trackByArticleId"
+               class="article-item"
+               (click)="onArticleSelected(articleWithModule.article, getSelectedModule()!)">
+            <div class="article-icon">
+              <i class="pi pi-file"></i>
             </div>
-            <div class="article-preview">
-              <p class="article-description">{{ getArticleDescription(articleWithModule.article) }}</p>
+            <div class="article-content">
+              <h4 class="article-title">{{ getArticleTitle(articleWithModule.article) }}</h4>
+              <p class="article-description" *ngIf="getArticleDescription(articleWithModule.article)">
+                {{ getArticleDescription(articleWithModule.article) }}
+              </p>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- No Articles State -->
-      <div *ngIf="moduleWithArticles.articles.length === 0 && isModuleExpanded(moduleWithArticles.id)"
-           class="no-articles">
-        <i class="pi pi-file-o no-articles-icon"></i>
-        <p>Статьи для этого модуля пока недоступны.</p>
+          <div *ngIf="getSelectedModuleArticles().length === 0" class="no-articles">
+            <i class="pi pi-file-o no-articles-icon"></i>
+            <p>Статьи для этого модуля пока недоступны.</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
