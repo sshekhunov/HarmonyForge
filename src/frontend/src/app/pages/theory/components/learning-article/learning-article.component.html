@@ -11,23 +11,22 @@
   </div>
 </div>
 
-<div class="article-detail-page" *ngIf="loadFromRoute">
-  <div class="article-header" *ngIf="article">
+<div *ngIf="article && !loading" class="article-detail-container">
+  <!-- Header -->
+  <div class="article-header">
     <a class="back-link" (click)="onGoBack()">
       <i class="pi pi-arrow-left"></i> Назад к модулям
     </a>
-    <div class="article-title-section">
+    <div class="article-header-content article-title-section">
       <h1 class="article-title">{{ article.title }}</h1>
-      <div class="article-meta" *ngIf="moduleTitle">
-        <h2 class="module-title">{{ moduleTitle }}</h2>
-      </div>
+      <h2 class="article-subtitle" *ngIf="moduleTitle">{{ moduleTitle }}</h2>
     </div>
   </div>
-</div>
 
-<div class="learning-article-container" *ngIf="article && !loading">
-  <!-- Article Content -->
-  <div class="article-content">
+  <div class="article-content-wrapper">
+    <div class="learning-article-container">
+      <!-- Article Content -->
+      <div class="article-content">
     <div *ngIf="article.contentSections.length === 0" class="no-content">
       <i class="pi pi-file-o no-content-icon"></i>
       <p>Контент статьи пока недоступен.</p>
@@ -95,8 +94,10 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
   </div>
+</div>
 </div>
 
 <!-- No Article State -->
