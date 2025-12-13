@@ -34,8 +34,21 @@
       <span class="stat-value">{{ getItemCount() }}</span>
       <span class="stat-label">Элементов</span>
     </div>
-    <div class="stat-item">
-      <span class="stat-value">{{ getCompletionPercentage() }}%</span>
+    <div class="percentage-progress-container">
+      <svg class="circular-progress" viewBox="0 0 36 36">
+        <circle class="progress-ring-bg" cx="18" cy="18" r="16" fill="none" stroke="#e0e0e0" stroke-width="3"></circle>
+        <circle class="progress-ring"
+                cx="18"
+                cy="18"
+                r="16"
+                fill="none"
+                stroke="#4caf50"
+                stroke-width="3"
+                [attr.stroke-dasharray]="getProgressDashArray()"
+                [attr.stroke-dashoffset]="getProgressDashOffset()"
+                transform="rotate(-90 18 18)"></circle>
+      </svg>
+      <span class="progress-percentage">{{ getCompletionPercentage() }}%</span>
     </div>
   </div>
 </div>
