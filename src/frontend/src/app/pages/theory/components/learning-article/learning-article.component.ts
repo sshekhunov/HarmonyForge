@@ -11,8 +11,8 @@ import { OsmdRendererModule } from '@/shared/components/osmd-renderer/osmd-rende
 import { LearningArticle, LearningArticleContentSection, LearningArticleContentItem } from '../../models/learning-article.model';
 import { LearningCourseService } from '../../service/learning-course.service';
 import { LearningArticleService } from '../../service/learning-article.service';
-import { StudentProfileService } from '@/shared/services/student-profile.service';
-import { AuthStateService } from '@/shared/services/auth-state.service';
+import { StudentProfileService } from '../../service/student-profile.service';
+import { AuthStateService } from '../../../../shared/services/auth-state.service';
 
 @Component({
   selector: 'app-learning-article',

@@ -9,5 +9,11 @@ public interface ILearningItemStatusRepository : IRepository<LearningItemStatus>
         Guid learningItemId,
         LearningItemType learningItemType,
         CancellationToken cancellationToken = default);
+
+    Task<IList<LearningItemStatus>> GetByStudentAndItemsAsync(
+        Guid studentId,
+        IEnumerable<Guid> learningItemIds,
+        LearningItemType learningItemType,
+        CancellationToken cancellationToken = default);
 }
 

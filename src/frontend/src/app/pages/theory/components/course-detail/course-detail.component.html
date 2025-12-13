@@ -27,48 +27,48 @@
 </div>
 
 <div *ngIf="!loading && !error && course" class="course-detail-container">
-  <!-- Header -->
   <div class="course-header">
-    <a class="back-link" (click)="onGoBack()">
-      <i class="pi pi-arrow-left"></i> Назад к курсам
-    </a>
-    <div class="course-header-content course-title-section">
-      <h1 class="course-title">{{ course.title }}</h1>
-      <h2 class="course-subtitle" *ngIf="course.description">{{ course.description }}</h2>
+    <div class="course-header-content">
+      <a class="back-link" (click)="onGoBack()">
+        <i class="pi pi-arrow-left"></i> Назад к курсам
+      </a>
+      <div class="course-title-section">
+        <h1 class="course-title">{{ course.title }}</h1>
+        <h2 class="course-subtitle" *ngIf="course.description">{{ course.description }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="modules-sidebar">
+    <div *ngFor="let module of course.modules; trackBy: trackByModuleId"
+         class="module-item"
+         [class.active]="isModuleSelected(module.id)"
+         (click)="onModuleSelected(module.id)">
+      <div class="module-progress-circle">
+        <svg class="progress-svg" viewBox="0 0 28 28">
+          <circle class="progress-ring-bg" cx="14" cy="14" r="12" fill="none" stroke="#e0e0e0" stroke-width="2"></circle>
+          <circle class="progress-ring"
+                  cx="14"
+                  cy="14"
+                  r="12"
+                  fill="none"
+                  stroke="#4caf50"
+                  stroke-width="2"
+                  [attr.stroke-dasharray]="getProgressDashArray(module.id)"
+                  [attr.stroke-dashoffset]="getProgressDashOffset(module.id)"
+                  transform="rotate(-90 14 14)"></circle>
+        </svg>
+        <div class="progress-fill" *ngIf="isModuleSelected(module.id)"></div>
+      </div>
+      <div class="module-info">
+        <h3 class="module-title">{{ module.title }}</h3>
+        <p class="module-description" *ngIf="module.description">
+          {{ module.description }}
+        </p>
+      </div>
     </div>
   </div>
 
   <div class="course-content">
-    <div class="modules-sidebar">
-      <div *ngFor="let module of course.modules; trackBy: trackByModuleId"
-           class="module-item"
-           [class.active]="isModuleSelected(module.id)"
-           (click)="onModuleSelected(module.id)">
-        <div class="module-progress-circle">
-          <svg class="progress-svg" viewBox="0 0 28 28">
-            <circle class="progress-ring-bg" cx="14" cy="14" r="12" fill="none" stroke="#e0e0e0" stroke-width="2"></circle>
-            <circle class="progress-ring"
-                    cx="14"
-                    cy="14"
-                    r="12"
-                    fill="none"
-                    stroke="#4caf50"
-                    stroke-width="2"
-                    [attr.stroke-dasharray]="getProgressDashArray(module.id)"
-                    [attr.stroke-dashoffset]="getProgressDashOffset(module.id)"
-                    transform="rotate(-90 14 14)"></circle>
-          </svg>
-          <div class="progress-fill" *ngIf="isModuleSelected(module.id)"></div>
-        </div>
-        <div class="module-info">
-          <h3 class="module-title">{{ module.title }}</h3>
-          <p class="module-description" *ngIf="module.description">
-            {{ module.description }}
-          </p>
-        </div>
-      </div>
-    </div>
-
     <div class="articles-content">
       <div *ngIf="getSelectedModule()" class="selected-module-content">
         <div class="module-header">
@@ -80,16 +80,25 @@
 
         <div class="articles-list">
           <div *ngFor="let articleWithModule of getSelectedModuleArticles(); trackBy: trackByArticleId"
-               class="article-item"
-               (click)="onArticleSelected(articleWithModule.article, getSelectedModule()!)">
-            <div class="article-icon">
-              <i class="pi pi-file"></i>
+               class="article-item">
+            <div class="article-main-content" (click)="onArticleSelected(articleWithModule.article, getSelectedModule()!)">
+              <div class="article-icon">
+                <i class="pi pi-file"></i>
+              </div>
+              <div class="article-content">
+                <h4 class="article-title">{{ getArticleTitle(articleWithModule.article) }}</h4>
+                <p class="article-description" *ngIf="getArticleDescription(articleWithModule.article)">
+                  {{ getArticleDescription(articleWithModule.article) }}
+                </p>
+              </div>
             </div>
-            <div class="article-content">
-              <h4 class="article-title">{{ getArticleTitle(articleWithModule.article) }}</h4>
-              <p class="article-description" *ngIf="getArticleDescription(articleWithModule.article)">
-                {{ getArticleDescription(articleWithModule.article) }}
-              </p>
+            <div class="article-checkbox" *ngIf="isAuthenticated" (click)="$event.stopPropagation()">
+              <p-checkbox
+                [binary]="true"
+                [ngModel]="isArticleCompleted(articleWithModule.article.id)"
+                (ngModelChange)="onArticleCompletionChange(articleWithModule.article.id, $event)"
+                [inputId]="'checkbox-' + articleWithModule.article.id">
+              </p-checkbox>
             </div>
           </div>
 
