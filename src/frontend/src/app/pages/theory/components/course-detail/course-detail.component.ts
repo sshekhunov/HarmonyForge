@@ -58,6 +58,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
           this.loadArticleCompletionStatuses();
         } else {
           this.articleCompletionStatus.clear();
+          this.initializeModuleProgress();
         }
       });
     }
@@ -93,8 +94,11 @@ export class CourseDetailComponent implements OnInit, OnChanges {
           this.selectFirstModule();
         }
       }
-      if (changes['articlesByModule'] && this.isAuthenticated) {
-        this.loadArticleCompletionStatuses();
+      if (changes['articlesByModule']) {
+        this.initializeModuleProgress();
+        if (this.isAuthenticated) {
+          this.loadArticleCompletionStatuses();
+        }
       }
     }
   }
@@ -157,6 +161,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         results.forEach(result => {
           this.articlesByModule[result.moduleId] = result.articles;
         });
+        this.initializeModuleProgress();
         this.loading = false;
         if (this.isAuthenticated) {
           this.loadArticleCompletionStatuses();
@@ -172,12 +177,24 @@ export class CourseDetailComponent implements OnInit, OnChanges {
   private initializeModuleProgress(): void {
     if (this.course?.modules) {
       this.course.modules.forEach(module => {
-        if (!this.moduleProgress.has(module.id)) {
-          const randomProgress = Math.floor(Math.random() * 100);
-          this.moduleProgress.set(module.id, randomProgress);
-        }
+        this.calculateModuleProgress(module.id);
       });
     }
+  }
+
+  private calculateModuleProgress(moduleId: string): void {
+    const articles = this.articlesByModule[moduleId] || [];
+    if (articles.length === 0) {
+      this.moduleProgress.set(moduleId, 0);
+      return;
+    }
+
+    const completedCount = articles.filter(articleWithModule => 
+      this.articleCompletionStatus.get(articleWithModule.article.id) === true
+    ).length;
+
+    const progress = Math.round((completedCount / articles.length) * 100);
+    this.moduleProgress.set(moduleId, progress);
   }
 
   private selectFirstModule(): void {
@@ -323,6 +340,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         statuses.forEach((status: any) => {
           this.articleCompletionStatus.set(status.learningItemId, status.isCompleted);
         });
+        this.updateAllModuleProgress();
       },
       error: (error: any) => {
         console.error('Error loading article completion statuses:', error);
@@ -346,6 +364,11 @@ export class CourseDetailComponent implements OnInit, OnChanges {
 
     this.articleCompletionStatus.set(articleId, isCompleted);
 
+    const moduleId = this.findModuleIdForArticle(articleId);
+    if (moduleId) {
+      this.calculateModuleProgress(moduleId);
+    }
+
     this.studentProfileService.updateLearningItemStatus({
       userId: user.userId,
       learningItemId: articleId,
@@ -357,7 +380,27 @@ export class CourseDetailComponent implements OnInit, OnChanges {
       error: (error:any) => {
         console.error('Error updating article completion status:', error);
         this.articleCompletionStatus.set(articleId, !isCompleted);
+        if (moduleId) {
+          this.calculateModuleProgress(moduleId);
+        }
       }
     });
+  }
+
+  private findModuleIdForArticle(articleId: string): string | null {
+    for (const [moduleId, articles] of Object.entries(this.articlesByModule)) {
+      if (articles.some(articleWithModule => articleWithModule.article.id === articleId)) {
+        return moduleId;
+      }
+    }
+    return null;
+  }
+
+  private updateAllModuleProgress(): void {
+    if (this.course?.modules) {
+      this.course.modules.forEach(module => {
+        this.calculateModuleProgress(module.id);
+      });
+    }
   }
 }
