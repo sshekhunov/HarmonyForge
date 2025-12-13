@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\HF.StudentProfileService.Core.Application\HF.StudentProfileService.Core.Application.csproj" />
     <ProjectReference Include="..\HF.StudentProfileService.Infrastructure.DataAccess\HF.StudentProfileService.Infrastructure.DataAccess.csproj" />
   </ItemGroup>
 

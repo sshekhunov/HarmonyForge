@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\HF.StudentProfileService.Core.Domain\HF.StudentProfileService.Core.Domain.csproj" />
+  </ItemGroup>
+
 </Project>
