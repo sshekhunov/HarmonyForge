@@ -42,17 +42,23 @@
   min-height: calc(100vh - 200px);
   width: 100%;
   position: relative;
+  margin-top: -6rem;
+  padding-top: 0;
 }
 
 .course-header {
   width: 100vw;
-  position: relative;
+  position: absolute;
+  top: 4rem;
   left: 50%;
   right: 50%;
   margin-left: -50vw;
   padding: 3rem;
 
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--primary-color) 60%, black) 0%,
+    color-mix(in srgb, var(--primary-color) 80%, black) 50%,
+    color-mix(in srgb, var(--primary-color) 50%, black) 100%);
   border: none;
   margin-bottom: 0;
   margin-top: 0;
@@ -75,6 +81,10 @@
     margin-bottom: 1rem;
     cursor: pointer;
     transition: color 0.2s ease;
+    position: absolute;
+    left: calc(50% - 600px);
+    top: 3rem;
+    z-index: 2;
 
     &:hover {
       color: rgba(255, 255, 255, 1);
@@ -108,7 +118,7 @@
   flex: 1;
   overflow: hidden;
   margin-top: 0;
-  padding-top: 2rem;
+  padding-top: 15rem;
 }
 
 .modules-sidebar {
@@ -117,7 +127,7 @@
   border: none;
   padding: 1.5rem 0;
   position: absolute;
-  top: 150px;
+  top: 14rem;
   left: calc(50% - 600px);
   z-index: 10;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
@@ -322,6 +332,10 @@
     .course-header-content {
       padding-left: calc(320px + 3rem);
     }
+
+    .back-link {
+      left: 2rem;
+    }
   }
 
   .modules-sidebar {
@@ -343,6 +357,13 @@
 
     .course-header-content {
       padding-left: 2.5rem;
+    }
+
+    .back-link {
+      position: relative;
+      left: 0;
+      top: 0;
+      margin-left: 1rem;
     }
   }
 
