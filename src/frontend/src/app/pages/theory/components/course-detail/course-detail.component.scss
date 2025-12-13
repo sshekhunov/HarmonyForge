@@ -209,6 +209,7 @@
         line-height: 1.4;
         display: -webkit-box;
         -webkit-line-clamp: 2;
+        line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
       }
@@ -257,18 +258,25 @@
 
       .article-item {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         gap: 1rem;
         padding: 1.5rem;
         background: var(--surface-card);
         border: 1px solid var(--surface-border);
         border-radius: 8px;
-        cursor: pointer;
         transition: all 0.2s ease;
 
         &:hover {
           border-color: var(--primary-color);
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .article-main-content {
+          display: flex;
+          align-items: flex-start;
+          gap: 1rem;
+          flex: 1;
+          cursor: pointer;
         }
 
         .article-icon {
@@ -302,9 +310,18 @@
             line-height: 1.5;
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
           }
+        }
+
+        .article-checkbox {
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding-left: 1rem;
         }
       }
 

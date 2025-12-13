@@ -11,6 +11,8 @@ import { OsmdRendererModule } from '@/shared/components/osmd-renderer/osmd-rende
 import { LearningArticle, LearningArticleContentSection, LearningArticleContentItem } from '../../models/learning-article.model';
 import { LearningCourseService } from '../../service/learning-course.service';
 import { LearningArticleService } from '../../service/learning-article.service';
+import { StudentProfileService } from '../../service/student-profile.service';
+import { AuthStateService } from '../../../../shared/services/auth-state.service';
 
 @Component({
   selector: 'app-learning-article',
@@ -33,7 +35,9 @@ export class LearningArticleComponent implements OnInit {
     @Optional() private route: ActivatedRoute,
     @Optional() private router: Router,
     @Optional() private learningCourseService: LearningCourseService,
-    @Optional() private learningArticleService: LearningArticleService
+    @Optional() private learningArticleService: LearningArticleService,
+    @Optional() private studentProfileService: StudentProfileService,
+    @Optional() private authStateService: AuthStateService
   ) { }
 
   ngOnInit(): void {
@@ -59,6 +63,7 @@ export class LearningArticleComponent implements OnInit {
     this.learningArticleService.getArticleById(articleId).subscribe({
       next: (article) => {
         this.article = article;
+        this.updateArticleCompletionStatus(article.id, true);
         if (this.courseId) {
           this.loadCourseForModule(article.learningModuleId);
         } else {
@@ -159,5 +164,25 @@ export class LearningArticleComponent implements OnInit {
         return 'music_score';
       }
     }
+  }
+
+  private updateArticleCompletionStatus(articleId: string, isCompleted: boolean): void {
+    const user = this.authStateService.getUser();
+    if (!user || !user.userId) {
+      return;
+    }
+
+    this.studentProfileService.updateLearningItemStatus({
+      userId: user.userId,
+      learningItemId: articleId,
+      learningItemType: 'Article',
+      isCompleted: isCompleted
+    }).subscribe({
+      next: () => {
+      },
+      error: (error) => {
+        console.error('Error updating article completion status:', error);
+      }
+    });
   }
 }

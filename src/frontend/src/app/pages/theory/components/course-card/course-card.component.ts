@@ -11,6 +11,8 @@ import { LearningCourse } from '../../models/learning-course.model';
 })
 export class CourseCardComponent {
   @Input() course!: LearningCourse;
+  @Input() itemCount: number = 0;
+  @Input() completionPercentage: number = 0;
   @Output() courseSelected = new EventEmitter<LearningCourse>();
 
   getModuleCount(): number {
@@ -18,11 +20,11 @@ export class CourseCardComponent {
   }
 
   getItemCount(): number {
-    return 0;
+    return this.itemCount;
   }
 
   getCompletionPercentage(): number {
-    return 60;
+    return this.completionPercentage;
   }
 
   getProgressDashArray(): string {
