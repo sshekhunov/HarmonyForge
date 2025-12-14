@@ -2,15 +2,15 @@
 
 public class LearningArticleContentSection : BaseEntity
 {
-    private List<LearningArticleContentItem> _contentItems = [];
+    private List<LearningContentItem> _contentItems = [];
 
     public string Title { get; set; } = string.Empty;
 
     public int Order { get; set; } = 0;
 
-    public IEnumerable<LearningArticleContentItem> ContentItems => _contentItems;
+    public IEnumerable<LearningContentItem> ContentItems => _contentItems;
 
-    public void AddContentItems(List<LearningArticleContentItem> items)
+    public void AddContentItems(List<LearningContentItem> items)
     {
         if (items != null && items.Any())
         {
