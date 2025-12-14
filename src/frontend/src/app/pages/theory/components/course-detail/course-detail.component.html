@@ -82,7 +82,7 @@
                [class.exercise-item]="itemWithModule.item.itemType === 1">
             <div class="learning-item-main-content"
                  [class.exercise-content]="itemWithModule.item.itemType === 1"
-                 (click)="itemWithModule.item.itemType === 0 ? onItemSelected(itemWithModule.item, getSelectedModule()!) : null">
+                 (click)="onItemSelected(itemWithModule.item, getSelectedModule()!)">
               <div class="learning-item-icon">
                 <i [class]="itemWithModule.item.itemType === 0 ? 'pi pi-book' : 'pi pi-pencil'"></i>
               </div>

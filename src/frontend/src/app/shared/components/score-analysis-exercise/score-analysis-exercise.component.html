@@ -3,6 +3,9 @@
     <div class="splitter-panel panel-content">
       <div class="panel-card">
         <div class="panel-header">
+          <button class="back-button" (click)="backClick.emit()" type="button" aria-label="Назад">
+            <i class="pi pi-arrow-left"></i>
+          </button>
           <h2 class="panel-title">{{ taskTitle }}</h2>
         </div>
         <div class="panel-body">

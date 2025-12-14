@@ -265,14 +265,6 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     }
   }
 
-  onArticleSelected(article: LearningArticle, module: LearningModule) {
-    if (this.loadFromRoute && this.router && this.course) {
-      this.router.navigate(['/theory/course', this.course.id, 'article', article.id]);
-    } else {
-      this.articleSelected.emit({ article, module });
-    }
-  }
-
   onItemSelected(item: LearningItem, module: LearningModule) {
     if (item.itemType === LearningItemType.Article) {
       // Create minimal article object for navigation (full article will be loaded by the article component)
@@ -282,11 +274,18 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         title: item.title,
         description: item.description,
         number: item.number,
-        contentSections: [] // Will be loaded by the article component
+        contentSections: []
       };
-      this.onArticleSelected(article, module);
+        if (this.loadFromRoute && this.router && this.course) {
+        this.router.navigate(['/theory/course', this.course.id, 'article', article.id]);
+        } else {
+        this.articleSelected.emit({ article, module });
+        }
+    } else if (item.itemType === LearningItemType.Exercise) {
+      if (this.loadFromRoute && this.router && this.course) {
+        this.router.navigate(['/theory/course', this.course.id, 'exercise', item.id]);
+      }
     }
-    // Exercises are not clickable/navigable for now
   }
 
   isArticle(item: LearningItem): boolean {
@@ -303,7 +302,6 @@ export class CourseDetailComponent implements OnInit, OnChanges {
 
   onModuleSelected(moduleId: string) {
     this.selectedModuleId = moduleId;
-    // Save selected module to localStorage
     if (this.course) {
       this.saveModuleId(this.course.id, moduleId);
     }

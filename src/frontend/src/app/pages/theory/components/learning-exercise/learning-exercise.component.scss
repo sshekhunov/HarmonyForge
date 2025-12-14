@@ -1,0 +1,105 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  width: calc(100vw - 4rem);
+  height: calc(100vh - 10.5rem);
+  margin-left: calc(-50vw + 50% + 2rem);
+  margin-right: calc(-50vw + 50%);
+  padding: 0;
+  overflow: hidden;
+}
+
+// Loading State
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  padding: 2rem;
+
+  .loading-content {
+    text-align: center;
+    max-width: 400px;
+
+    .loading-text {
+      margin-top: 1rem;
+      color: var(--text-color-secondary);
+      font-size: 1rem;
+    }
+  }
+}
+
+// Main container
+.exercise-container {
+  padding: 0;
+  max-width: 100%;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.exercise-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.no-exercise-type {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-color-secondary);
+
+  .no-exercise-type-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--surface-300);
+  }
+
+  p {
+    font-size: 1.1rem;
+    margin: 0;
+  }
+}
+
+.no-exercise {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-color-secondary);
+
+  .no-exercise-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: var(--surface-300);
+  }
+
+  p {
+    font-size: 1.2rem;
+    margin: 0;
+  }
+}
+
+// Make the score-analysis-exercise component fill the container
+:host ::ng-deep {
+  app-score-analysis-exercise {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+  }
+}
+

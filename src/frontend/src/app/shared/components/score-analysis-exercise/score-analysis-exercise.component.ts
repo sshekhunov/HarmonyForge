@@ -23,6 +23,7 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
     @Input() taskTitle: string = 'Задание';
 
     @Output() analysisComplete = new EventEmitter<HarmonyAnalysisResponse>();
+    @Output() backClick = new EventEmitter<void>();
 
     musicXml = '';
     files: any[] = [];

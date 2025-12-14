@@ -34,6 +34,37 @@
         justify-content: space-between;
         gap: 1rem;
 
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.5rem;
+            height: 2.5rem;
+            color: var(--text-color);
+            background: transparent;
+            border: 1px solid var(--surface-border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 0;
+            flex-shrink: 0;
+
+            &:hover {
+                color: var(--primary-color);
+                background: var(--surface-hover);
+                border-color: var(--primary-color);
+                transform: translateX(-2px);
+            }
+
+            &:active {
+                transform: translateX(0);
+            }
+
+            i {
+                font-size: 1rem;
+            }
+        }
+
         .panel-title {
             font-size: 1.25rem;
             font-weight: 600;
