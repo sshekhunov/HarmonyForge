@@ -123,6 +123,13 @@ export class LearningExerciseComponent implements OnInit {
     }
   }
 
+  getBackLink(): string {
+    if (this.loadFromRoute && this.courseId) {
+      return `/theory/course/${this.courseId}`;
+    }
+    return '';
+  }
+
   isScoreAnalysisExercise(): boolean {
     return this.exercise?.appType === ExerciseAppType.ScoreAnalysis;
   }

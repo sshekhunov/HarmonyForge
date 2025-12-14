@@ -1,5 +1,6 @@
-import { Component, ViewChild, ElementRef, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, ViewChild, ElementRef, Input, Output, EventEmitter, OnInit, Optional } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router, RouterModule } from '@angular/router';
 import { OsmdRendererModule } from '@/shared/components/osmd-renderer/osmd-renderer.module';
 import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
@@ -14,16 +15,16 @@ import { LearningArticleContentItem } from '../../../pages/theory/models/learnin
     standalone: true,
     templateUrl: './score-analysis-exercise.component.html',
     styleUrls: ['./score-analysis-exercise.component.scss'],
-    imports: [CommonModule, OsmdRendererModule, PanelModule, ButtonModule, SplitterModule, LearningContentRendererComponent]
+    imports: [CommonModule, RouterModule, OsmdRendererModule, PanelModule, ButtonModule, SplitterModule, LearningContentRendererComponent]
 })
 export class ScoreAnalysisExerciseComponent implements OnInit {
     @ViewChild('fileInput') fileInputRef!: ElementRef<HTMLInputElement>;
 
     @Input() taskContentItems: LearningArticleContentItem[] = [];
     @Input() taskTitle: string = 'Задание';
+    @Input() backLink?: string;
 
     @Output() analysisComplete = new EventEmitter<HarmonyAnalysisResponse>();
-    @Output() backClick = new EventEmitter<void>();
 
     musicXml = '';
     files: any[] = [];
@@ -33,7 +34,10 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
 
     nestedPanelSizes: number[] = [50, 50];
 
-    constructor(private trainingService: TrainingService) {}
+    constructor(
+        private trainingService: TrainingService,
+        @Optional() private router: Router
+    ) {}
 
     ngOnInit(): void {
         this.musicXml = '';
@@ -136,6 +140,12 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
         } finally {
             this.isLoading = false;
             this.updateNestedPanelSizes();
+        }
+    }
+
+    onBackClick(): void {
+        if (this.backLink && this.router) {
+            this.router.navigateByUrl(this.backLink);
         }
     }
 }

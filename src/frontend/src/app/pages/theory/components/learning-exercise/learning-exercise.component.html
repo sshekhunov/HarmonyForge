@@ -17,8 +17,8 @@
     <app-score-analysis-exercise
       [taskContentItems]="taskContentItems"
       [taskTitle]="exercise.title"
-      (analysisComplete)="onAnalysisComplete($event)"
-      (backClick)="onGoBack()">
+      [backLink]="getBackLink()"
+      (analysisComplete)="onAnalysisComplete($event)">
     </app-score-analysis-exercise>
   </div>
 
