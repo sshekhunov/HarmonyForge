@@ -4,15 +4,18 @@ import { OsmdRendererModule } from '@/shared/components/osmd-renderer/osmd-rende
 import { FileUpload } from 'primeng/fileupload';
 import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
+import { SplitterModule } from 'primeng/splitter';
 import { TrainingService } from './training.service';
 import { HarmonyAnalysisRequest, HarmonyAnalysisResponse } from './training.model';
+import { LearningContentRendererComponent } from '@/shared/components/learning-content-renderer/learning-content-renderer.component';
+import { LearningArticleContentItem } from '../theory/models/learning-article.model';
 
 @Component({
     selector: 'app-training',
     standalone: true,
     templateUrl: './training.component.html',
     styleUrls: ['./training.component.scss'],
-    imports: [CommonModule, OsmdRendererModule, FileUpload, PanelModule, ButtonModule]
+    imports: [CommonModule, OsmdRendererModule, FileUpload, PanelModule, ButtonModule, SplitterModule, LearningContentRendererComponent]
 })
 export class Training {
 
@@ -21,6 +24,25 @@ export class Training {
     checkResult = '';
     noteCount = 0;
     isLoading = false;
+
+    // Mock content items for section 1
+    mockContentItems: LearningArticleContentItem[] = [
+        {
+            content: 'Добро пожаловать в тренажер гармонизации мелодии! Этот инструмент поможет вам проверить правильность гармонизации ваших музыкальных произведений.',
+            order: 0,
+            type: 0 // Text
+        },
+        {
+            content: '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd"><score-partwise version="3.1"><part-list><score-part id="P1"><part-name>Music</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note><note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note><note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note><note><pitch><step>F</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note></measure></part></score-partwise>',
+            order: 1,
+            type: 3 // MusicXml
+        },
+        {
+            content: 'Загрузите ваш файл в формате MusicXML в секции 2, затем нажмите кнопку "Проверить" для анализа гармонии. Результаты анализа будут отображены в секции 3.',
+            order: 2,
+            type: 0 // Text
+        }
+    ];
 
     constructor(private trainingService: TrainingService) {}
 
