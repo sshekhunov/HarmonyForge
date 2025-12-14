@@ -1,7 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { OsmdRendererModule } from '@/shared/components/osmd-renderer/osmd-renderer.module';
-import { FileUpload } from 'primeng/fileupload';
 import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
 import { SplitterModule } from 'primeng/splitter';
@@ -15,9 +14,10 @@ import { LearningArticleContentItem } from '../theory/models/learning-article.mo
     standalone: true,
     templateUrl: './training.component.html',
     styleUrls: ['./training.component.scss'],
-    imports: [CommonModule, OsmdRendererModule, FileUpload, PanelModule, ButtonModule, SplitterModule, LearningContentRendererComponent]
+    imports: [CommonModule, OsmdRendererModule, PanelModule, ButtonModule, SplitterModule, LearningContentRendererComponent]
 })
 export class Training {
+    @ViewChild('fileInput') fileInputRef!: ElementRef<HTMLInputElement>;
 
     musicXml = '';
     files:any[] = [];
@@ -52,23 +52,62 @@ export class Training {
         this.noteCount = 0;
     }
 
-    onSelectedFiles(event: { currentFiles: any[]; }) {
-        this.files = event.currentFiles;
-        const first = this.files[0];
-        if (first instanceof File) {
-            const reader = new FileReader();
-            reader.onload = () => {
-                this.musicXml = reader.result as string;
-            };
-            reader.readAsText(first);
+    onFileSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (input.files && input.files.length > 0) {
+            const file = input.files[0];
+            this.processFile(file);
         }
     }
+
+    onDragOver(event: DragEvent) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.currentTarget) {
+            (event.currentTarget as HTMLElement).classList.add('drag-over');
+        }
+    }
+
+    onDragLeave(event: DragEvent) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.currentTarget) {
+            (event.currentTarget as HTMLElement).classList.remove('drag-over');
+        }
+    }
+
+    onDrop(event: DragEvent) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.currentTarget) {
+            (event.currentTarget as HTMLElement).classList.remove('drag-over');
+        }
+
+        if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+            const file = event.dataTransfer.files[0];
+            this.processFile(file);
+        }
+    }
+
+    private processFile(file: File) {
+        const reader = new FileReader();
+        reader.onload = () => {
+            this.musicXml = reader.result as string;
+            this.files = [file];
+        };
+        reader.readAsText(file);
+    }
+
 
     onClear() {
         this.files = [];
         this.musicXml = '';
         this.checkResult = '';
         this.noteCount = 0;
+
+        if (this.fileInputRef?.nativeElement) {
+            this.fileInputRef.nativeElement.value = '';
+        }
     }
 
     async onUpload(_event: unknown) {

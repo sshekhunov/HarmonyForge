@@ -23,40 +23,58 @@
           <div class="splitter-panel panel-upload">
             <div class="panel-card">
               <div class="panel-header">
-                <h2 class="panel-title">Загрузка файла</h2>
+                <h2 class="panel-title">Решение</h2>
+                <div class="panel-header-actions">
+                  <p-button
+                    label="Загрузить"
+                    icon="pi pi-upload"
+                    (onClick)="fileInput.click()"
+                    [disabled]="isLoading">
+                  </p-button>
+                  <p-button
+                    label="Проверить"
+                    icon="pi pi-sparkles"
+                    (onClick)="onUpload(null)"
+                    [disabled]="!musicXml || isLoading"
+                    [loading]="isLoading">
+                  </p-button>
+                  <p-button
+                    label="Очистить"
+                    icon="pi pi-times"
+                    severity="secondary"
+                    (onClick)="onClear()"
+                    [disabled]="!musicXml || isLoading">
+                  </p-button>
+                </div>
               </div>
               <div class="panel-body">
                 <div class="upload-card">
-                  <p-fileupload name="musicScores[]"
-                      chooseLabel="Загрузить" uploadLabel="Проверить" cancelLabel="Отменить"
-                      chooseIcon="pi pi-upload"
-                      uploadIcon="pi pi-sparkles"
-                      [multiple]="false"
-                      maxFileSize="1000000"
-                      [customUpload]="true"
-                      (uploadHandler)="onUpload($event)"
-                      (onSelect)="onSelectedFiles($event)"
-                      (onClear)="onClear()">
-
-                      <ng-template #empty>
-                          <div class="flex items-center justify-center flex-col upload-empty">
-                              <i class="pi pi-cloud-upload upload-icon"></i>
-                              <p class="mt-6 mb-0">Перетащите файл в формате MusicXml</p>
-                          </div>
-                      </ng-template>
-                      <ng-template #content>
-
-                      </ng-template>
-                  </p-fileupload>
+                  @if (musicXml == '')
+                  {
+                  <div class="upload-dropzone"
+                       (click)="fileInput.click()"
+                       (dragover)="onDragOver($event)"
+                       (dragleave)="onDragLeave($event)"
+                       (drop)="onDrop($event)">
+                    <div class="flex items-center justify-center flex-col upload-empty">
+                      <i class="pi pi-cloud-upload upload-icon"></i>
+                      <p class="mt-6 mb-0">Перетащите файл в формате MusicXml</p>
+                    </div>
+                  </div>
+                  }
+                  @else
+                  {
+                  <div class="uploaded-preview">
+                    <lib-osmd-renderer [source]="musicXml"></lib-osmd-renderer>
+                  </div>
+                  }
+                  <input
+                    #fileInput
+                    type="file"
+                    accept=".musicxml,.xml"
+                    style="display: none;"
+                    (change)="onFileSelected($event)">
                 </div>
-
-                @if (musicXml != '')
-                {
-                <div class="uploaded-preview">
-                  <h3 class="preview-title">Предпросмотр загруженного файла:</h3>
-                  <lib-osmd-renderer [source]="musicXml"></lib-osmd-renderer>
-                </div>
-                }
 
                 @if (isLoading)
                 {
