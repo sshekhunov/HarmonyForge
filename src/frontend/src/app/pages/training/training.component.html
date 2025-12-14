@@ -18,7 +18,7 @@
     </ng-template>
 
     <ng-template pTemplate>
-      <p-splitter layout="vertical" [panelSizes]="[50, 50]" styleClass="training-splitter-nested">
+      <p-splitter layout="vertical" [panelSizes]="nestedPanelSizes" styleClass="training-splitter-nested">
         <ng-template pTemplate>
           <div class="splitter-panel panel-upload">
             <div class="panel-card">
@@ -94,9 +94,9 @@
               <div class="panel-header">
                 <h2 class="panel-title">Результаты анализа</h2>
               </div>
+              @if (checkResult != '')
+              {
               <div class="panel-body">
-                @if (checkResult != '')
-                {
                 <div class="result-content">
                     <h3 class="result-title">Результат анализа</h3>
                     <p class="result-text">{{ checkResult }}</p>
@@ -111,15 +111,8 @@
                     </div>
                     }
                 </div>
-                }
-                @else
-                {
-                <div class="result-empty">
-                    <i class="pi pi-info-circle result-empty-icon"></i>
-                    <p>Результаты анализа будут отображены здесь после проверки файла</p>
-                </div>
-                }
               </div>
+              }
             </div>
           </div>
         </ng-template>

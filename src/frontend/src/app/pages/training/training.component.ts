@@ -25,7 +25,8 @@ export class Training {
     noteCount = 0;
     isLoading = false;
 
-    // Mock content items for section 1
+    nestedPanelSizes: number[] = [50, 50];
+
     mockContentItems: LearningArticleContentItem[] = [
         {
             content: 'Добро пожаловать в тренажер гармонизации мелодии! Этот инструмент поможет вам проверить правильность гармонизации ваших музыкальных произведений.',
@@ -50,6 +51,15 @@ export class Training {
         this.musicXml = '';
         this.checkResult = '';
         this.noteCount = 0;
+        this.updateNestedPanelSizes();
+    }
+
+    private updateNestedPanelSizes() {
+        if (this.checkResult === '') {
+            this.nestedPanelSizes = [90,10];
+        } else {
+            this.nestedPanelSizes = [50, 50];
+        }
     }
 
     onFileSelected(event: Event) {
@@ -104,6 +114,7 @@ export class Training {
         this.musicXml = '';
         this.checkResult = '';
         this.noteCount = 0;
+        this.updateNestedPanelSizes();
 
         if (this.fileInputRef?.nativeElement) {
             this.fileInputRef.nativeElement.value = '';
@@ -136,6 +147,7 @@ export class Training {
             this.checkResult = `Ошибка при отправке запроса на сервер: ${error}`;
         } finally {
             this.isLoading = false;
+            this.updateNestedPanelSizes();
         }
     }
 
