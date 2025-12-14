@@ -1,0 +1,104 @@
+.section-content {
+  .content-item {
+    margin-bottom: 1.5rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    .content-wrapper {
+      .content-text {
+        color: var(--text-color);
+        font-size: 1rem;
+        line-height: 1.7;
+        margin: 0;
+        text-align: justify;
+        padding: 0;
+      }
+
+      .content-image {
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        margin: 0 auto;
+        display: block;
+      }
+
+      .video-embed {
+        position: relative;
+        width: 100%;
+        height: 0;
+        padding-bottom: 56.25%; // 16:9 aspect ratio
+        margin: 0;
+
+        .video-iframe {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+      }
+
+      .video-link {
+        margin: 0;
+
+        .video-link-button {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.75rem 1.5rem;
+          background: var(--primary-color);
+          color: white;
+          text-decoration: none;
+          border-radius: 6px;
+          font-weight: 500;
+          transition: all 0.2s ease;
+
+          &:hover {
+            background: var(--primary-color-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          }
+        }
+      }
+
+      .unknown-content {
+        .content-type-indicator {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+          padding: 0.5rem 1rem;
+          background: var(--surface-100);
+          border-radius: 6px;
+          color: var(--text-color-secondary);
+          font-size: 0.9rem;
+          font-weight: 500;
+
+          i {
+            color: var(--primary-color);
+          }
+        }
+      }
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .section-content {
+    .content-item {
+      .content-wrapper {
+        .content-text {
+          font-size: 0.95rem;
+          line-height: 1.6;
+        }
+      }
+    }
+  }
+}
+
