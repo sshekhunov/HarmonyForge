@@ -58,6 +58,42 @@ public class LearningItemStatusRepository : ILearningItemStatusRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IList<LearningItemStatus>> GetByStudentAndMultipleItemsAsync(
+        Guid studentId,
+        IEnumerable<(Guid learningItemId, LearningItemType learningItemType)> items,
+        CancellationToken cancellationToken = default)
+    {
+        var itemsList = items.ToList();
+        if (!itemsList.Any())
+        {
+            return new List<LearningItemStatus>();
+        }
+
+        // Build a query that matches any of the (itemId, itemType) pairs
+        // Using EF.Property to access the shadow property StudentId
+        // Group items by type for better query performance
+        var statuses = new List<LearningItemStatus>();
+        
+        var itemsByType = itemsList.GroupBy(item => item.learningItemType);
+        foreach (var group in itemsByType)
+        {
+            var itemIds = group.Select(item => item.learningItemId).ToList();
+            var itemType = group.Key;
+            
+            var typeStatuses = await _dbContext.LearningItemStatuses
+                .AsNoTracking()
+                .Where(s =>
+                    EF.Property<Guid>(s, "StudentId") == studentId &&
+                    s.LearningItemType == itemType &&
+                    itemIds.Contains(s.LearningItemId))
+                .ToListAsync(cancellationToken);
+            
+            statuses.AddRange(typeStatuses);
+        }
+
+        return statuses;
+    }
+
     public async Task AddAsync(LearningItemStatus entity, CancellationToken cancellationToken = default)
     {
         await _dbContext.LearningItemStatuses.AddAsync(entity, cancellationToken);

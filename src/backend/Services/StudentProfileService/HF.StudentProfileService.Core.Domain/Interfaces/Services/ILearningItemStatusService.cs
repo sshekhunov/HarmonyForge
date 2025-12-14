@@ -6,5 +6,6 @@ public interface ILearningItemStatusService
 {
     Task UpdateLearningItemStatusAsync(UpdateLearningItemStatusRequest request, CancellationToken cancellationToken = default);
     Task<IList<LearningItemStatusDto>> GetLearningItemStatusesAsync(GetLearningItemStatusesRequest request, CancellationToken cancellationToken = default);
+    Task<IList<LearningItemStatusDto>> GetMultipleLearningItemStatusesAsync(GetMultipleLearningItemStatusesRequest request, CancellationToken cancellationToken = default);
 }
 

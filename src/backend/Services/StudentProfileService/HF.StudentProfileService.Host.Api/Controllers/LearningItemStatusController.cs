@@ -68,5 +68,30 @@ public class LearningItemStatusController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An internal server error occurred while getting learning item statuses");
         }
     }
+
+    [HttpPost("get-multiple-statuses")]
+    [ProducesResponseType(typeof(IList<LearningItemStatusDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetMultipleLearningItemStatuses(
+        [FromBody] GetMultipleLearningItemStatusesRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var statuses = await _service.GetMultipleLearningItemStatusesAsync(request, cancellationToken);
+            return Ok(statuses);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Operation was cancelled while getting multiple learning item statuses");
+            return StatusCode(StatusCodes.Status499ClientClosedRequest, "Operation was cancelled");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while getting multiple learning item statuses");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An internal server error occurred while getting multiple learning item statuses");
+        }
+    }
 }
 

@@ -77,54 +77,37 @@
         </div>
 
         <div class="articles-list">
-          <div *ngFor="let articleWithModule of getSelectedModuleArticles(); trackBy: trackByArticleId"
-               class="article-item">
-            <div class="article-main-content" (click)="onArticleSelected(articleWithModule.article, getSelectedModule()!)">
+          <div *ngFor="let itemWithModule of getSelectedModuleItems(); trackBy: trackByItemId"
+               class="article-item"
+               [class.exercise-item]="itemWithModule.item.itemType === 1">
+            <div class="article-main-content" 
+                 [class.exercise-content]="itemWithModule.item.itemType === 1"
+                 (click)="itemWithModule.item.itemType === 0 ? onItemSelected(itemWithModule.item, getSelectedModule()!) : null">
               <div class="article-icon">
-                <i class="pi pi-file"></i>
+                <i [class]="itemWithModule.item.itemType === 0 ? 'pi pi-file' : 'pi pi-cog'"></i>
               </div>
               <div class="article-content">
-                <h4 class="article-title">{{ getArticleTitle(articleWithModule.article) }}</h4>
-                <p class="article-description" *ngIf="getArticleDescription(articleWithModule.article)">
-                  {{ getArticleDescription(articleWithModule.article) }}
+                <h4 class="article-title">{{ getItemTitle(itemWithModule.item) }}</h4>
+                <p class="article-description" *ngIf="getItemDescription(itemWithModule.item)">
+                  {{ getItemDescription(itemWithModule.item) }}
                 </p>
               </div>
             </div>
-            <div class="article-checkbox" *ngIf="isAuthenticated" (click)="$event.stopPropagation()">
+            <div *ngIf="isAuthenticated" 
+                 [class]="itemWithModule.item.itemType === 0 ? 'article-checkbox' : 'exercise-checkbox-container'"
+                 (click)="$event.stopPropagation()">
+              <span *ngIf="itemWithModule.item.itemType === 1" class="exercise-score">{{ getItemScore(itemWithModule.item.id) }}%</span>
               <p-checkbox
                 [binary]="true"
-                [ngModel]="isArticleCompleted(articleWithModule.article.id)"
-                (ngModelChange)="onArticleCompletionChange(articleWithModule.article.id, $event)"
-                [inputId]="'checkbox-' + articleWithModule.article.id">
+                [ngModel]="isItemCompleted(itemWithModule.item.id)"
+                [readonly]="itemWithModule.item.itemType === 1"
+                (ngModelChange)="itemWithModule.item.itemType === 0 ? onArticleCompletionChange(itemWithModule.item.id, $event) : null"
+                [inputId]="'checkbox-' + itemWithModule.item.id">
               </p-checkbox>
             </div>
           </div>
 
-          <div *ngFor="let exerciseWithModule of getSelectedModuleExercises(); trackBy: trackByExerciseId"
-               class="article-item exercise-item">
-            <div class="article-main-content">
-              <div class="article-icon">
-                <i class="pi pi-cog"></i>
-              </div>
-              <div class="article-content">
-                <h4 class="article-title">{{ getExerciseTitle(exerciseWithModule.exercise) }}</h4>
-                <p class="article-description" *ngIf="getExerciseDescription(exerciseWithModule.exercise)">
-                  {{ getExerciseDescription(exerciseWithModule.exercise) }}
-                </p>
-              </div>
-            </div>
-            <div class="exercise-checkbox-container" *ngIf="isAuthenticated" (click)="$event.stopPropagation()">
-              <span class="exercise-score">{{ getExerciseScore(exerciseWithModule.exercise.id) }}%</span>
-              <p-checkbox
-                [binary]="true"
-                [ngModel]="isExerciseCompleted(exerciseWithModule.exercise.id)"
-                [readonly]="true"
-                [inputId]="'checkbox-exercise-' + exerciseWithModule.exercise.id">
-              </p-checkbox>
-            </div>
-          </div>
-
-          <div *ngIf="getSelectedModuleArticles().length === 0 && getSelectedModuleExercises().length === 0" class="no-articles">
+          <div *ngIf="getSelectedModuleItems().length === 0" class="no-articles">
             <i class="pi pi-file-o no-articles-icon"></i>
             <p>Статьи и упражнения для этого модуля пока недоступны.</p>
           </div>

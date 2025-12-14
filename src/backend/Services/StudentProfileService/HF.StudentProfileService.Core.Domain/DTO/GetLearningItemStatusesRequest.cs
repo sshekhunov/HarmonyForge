@@ -9,3 +9,15 @@ public class GetLearningItemStatusesRequest
     public LearningItemType LearningItemType { get; set; }
 }
 
+public class GetMultipleLearningItemStatusesRequest
+{
+    public Guid UserId { get; set; }
+    public List<LearningItemStatusRequestItem> Items { get; set; } = new();
+}
+
+public class LearningItemStatusRequestItem
+{
+    public Guid LearningItemId { get; set; }
+    public LearningItemType LearningItemType { get; set; }
+}
+

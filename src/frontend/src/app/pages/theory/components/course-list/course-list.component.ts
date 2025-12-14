@@ -8,7 +8,8 @@ import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { LearningCourse, LearningModule } from '../../models/learning-course.model';
 import { CourseCardComponent } from '../course-card/course-card.component';
-import { LearningArticleService } from '../../service/learning-article.service';
+import { LearningItemService } from '../../service/learning-item.service';
+import { LearningItemType } from '../../models/learning-item.model';
 import { StudentProfileService } from '../../service/student-profile.service';
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
 
@@ -37,7 +38,7 @@ export class CourseListComponent implements OnInit, OnChanges {
   isAuthenticated = false;
 
   constructor(
-    @Optional() private learningArticleService: LearningArticleService,
+    @Optional() private learningItemService: LearningItemService,
     @Optional() private studentProfileService: StudentProfileService,
     @Optional() private authStateService: AuthStateService
   ) {
@@ -98,7 +99,7 @@ export class CourseListComponent implements OnInit, OnChanges {
   }
 
   private loadCourseProgress(): void {
-    if (!this.learningArticleService || !this.studentProfileService || !this.authStateService) {
+    if (!this.learningItemService || !this.studentProfileService || !this.authStateService) {
       return;
     }
 
@@ -113,20 +114,20 @@ export class CourseListComponent implements OnInit, OnChanges {
   }
 
   private loadProgressForCourse(course: LearningCourse, userId: string): void {
-    if (!this.learningArticleService || !this.studentProfileService) {
+    if (!this.learningItemService || !this.studentProfileService) {
       return;
     }
 
-    const articleObservables = course.modules.map(module =>
-      this.learningArticleService!.getArticlesByModuleId(module.id).pipe(
+    const itemObservables = course.modules.map(module =>
+      this.learningItemService!.getItemsByModuleId(module.id).pipe(
         catchError(error => {
-          console.error(`Error loading articles for module ${module.id}:`, error);
+          console.error(`Error loading items for module ${module.id}:`, error);
           return of([]);
         })
       )
     );
 
-    if (articleObservables.length === 0) {
+    if (itemObservables.length === 0) {
       this.courseProgress.set(course.id, {
         totalItems: 0,
         completedItems: 0,
@@ -135,16 +136,19 @@ export class CourseListComponent implements OnInit, OnChanges {
       return;
     }
 
-    forkJoin(articleObservables).subscribe({
-      next: (articlesArrays) => {
-        const allArticleIds: string[] = [];
-        articlesArrays.forEach(articles => {
-          articles.forEach(article => {
-            allArticleIds.push(article.id);
+    forkJoin(itemObservables).subscribe({
+      next: (itemsArrays) => {
+        const allItems: Array<{ learningItemId: string; learningItemType: 'Article' | 'Excercise' | 'Test' }> = [];
+        itemsArrays.forEach(items => {
+          items.forEach(item => {
+            allItems.push({
+              learningItemId: item.id,
+              learningItemType: item.itemType === LearningItemType.Article ? 'Article' : 'Excercise'
+            });
           });
         });
 
-        if (allArticleIds.length === 0) {
+        if (allItems.length === 0) {
           this.courseProgress.set(course.id, {
             totalItems: 0,
             completedItems: 0,
@@ -153,19 +157,18 @@ export class CourseListComponent implements OnInit, OnChanges {
           return;
         }
 
-        this.studentProfileService.getLearningItemStatuses({
+        this.studentProfileService.getMultipleLearningItemStatuses({
           userId: userId,
-          learningItemIds: allArticleIds,
-          learningItemType: 'Article'
+          items: allItems
         }).subscribe({
           next: (statuses) => {
             const completedCount = statuses.filter(status => status.isCompleted).length;
-            const completionPercentage = allArticleIds.length > 0
-              ? Math.round((completedCount / allArticleIds.length) * 100)
+            const completionPercentage = allItems.length > 0
+              ? Math.round((completedCount / allItems.length) * 100)
               : 0;
 
             this.courseProgress.set(course.id, {
-              totalItems: allArticleIds.length,
+              totalItems: allItems.length,
               completedItems: completedCount,
               completionPercentage: completionPercentage
             });
@@ -173,7 +176,7 @@ export class CourseListComponent implements OnInit, OnChanges {
           error: (error) => {
             console.error('Error loading completion statuses:', error);
             this.courseProgress.set(course.id, {
-              totalItems: allArticleIds.length,
+              totalItems: allItems.length,
               completedItems: 0,
               completionPercentage: 0
             });
@@ -181,7 +184,7 @@ export class CourseListComponent implements OnInit, OnChanges {
         });
       },
       error: (error) => {
-        console.error('Error loading articles for course:', error);
+        console.error('Error loading items for course:', error);
         this.courseProgress.set(course.id, {
           totalItems: 0,
           completedItems: 0,
@@ -192,7 +195,7 @@ export class CourseListComponent implements OnInit, OnChanges {
   }
 
   private loadCourseItemCounts(): void {
-    if (!this.learningArticleService) {
+    if (!this.learningItemService) {
       return;
     }
 
@@ -202,20 +205,20 @@ export class CourseListComponent implements OnInit, OnChanges {
   }
 
   private loadItemCountForCourse(course: LearningCourse): void {
-    if (!this.learningArticleService) {
+    if (!this.learningItemService) {
       return;
     }
 
-    const articleObservables = course.modules.map(module =>
-      this.learningArticleService!.getArticlesByModuleId(module.id).pipe(
+    const itemObservables = course.modules.map(module =>
+      this.learningItemService!.getItemsByModuleId(module.id).pipe(
         catchError(error => {
-          console.error(`Error loading articles for module ${module.id}:`, error);
+          console.error(`Error loading items for module ${module.id}:`, error);
           return of([]);
         })
       )
     );
 
-    if (articleObservables.length === 0) {
+    if (itemObservables.length === 0) {
       this.courseProgress.set(course.id, {
         totalItems: 0,
         completedItems: 0,
@@ -224,9 +227,9 @@ export class CourseListComponent implements OnInit, OnChanges {
       return;
     }
 
-    forkJoin(articleObservables).subscribe({
-      next: (articlesArrays) => {
-        const totalItems = articlesArrays.reduce((sum, articles) => sum + articles.length, 0);
+    forkJoin(itemObservables).subscribe({
+      next: (itemsArrays) => {
+        const totalItems = itemsArrays.reduce((sum, items) => sum + items.length, 0);
         this.courseProgress.set(course.id, {
           totalItems: totalItems,
           completedItems: 0,
@@ -234,7 +237,7 @@ export class CourseListComponent implements OnInit, OnChanges {
         });
       },
       error: (error) => {
-        console.error('Error loading articles for course:', error);
+        console.error('Error loading items for course:', error);
         this.courseProgress.set(course.id, {
           totalItems: 0,
           completedItems: 0,

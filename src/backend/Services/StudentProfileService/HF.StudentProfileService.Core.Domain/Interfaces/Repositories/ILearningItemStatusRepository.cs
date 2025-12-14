@@ -15,5 +15,10 @@ public interface ILearningItemStatusRepository : IRepository<LearningItemStatus>
         IEnumerable<Guid> learningItemIds,
         LearningItemType learningItemType,
         CancellationToken cancellationToken = default);
+
+    Task<IList<LearningItemStatus>> GetByStudentAndMultipleItemsAsync(
+        Guid studentId,
+        IEnumerable<(Guid learningItemId, LearningItemType learningItemType)> items,
+        CancellationToken cancellationToken = default);
 }
 

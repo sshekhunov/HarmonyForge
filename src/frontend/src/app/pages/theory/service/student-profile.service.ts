@@ -16,6 +16,16 @@ export interface GetLearningItemStatusesRequest {
   learningItemType: 'Article' | 'Excercise' | 'Test';
 }
 
+export interface GetMultipleLearningItemStatusesRequest {
+  userId: string;
+  items: LearningItemStatusRequestItem[];
+}
+
+export interface LearningItemStatusRequestItem {
+  learningItemId: string;
+  learningItemType: 'Article' | 'Excercise' | 'Test';
+}
+
 export interface LearningItemStatusDto {
   learningItemId: string;
   isCompleted: boolean;
@@ -36,6 +46,10 @@ export class StudentProfileService {
 
   getLearningItemStatuses(request: GetLearningItemStatusesRequest): Observable<LearningItemStatusDto[]> {
     return this.http.post<LearningItemStatusDto[]>(`${this.apiUrl}/get-statuses`, request);
+  }
+
+  getMultipleLearningItemStatuses(request: GetMultipleLearningItemStatusesRequest): Observable<LearningItemStatusDto[]> {
+    return this.http.post<LearningItemStatusDto[]>(`${this.apiUrl}/get-multiple-statuses`, request);
   }
 }
 

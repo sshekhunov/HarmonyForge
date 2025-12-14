@@ -10,11 +10,10 @@ import { TagModule } from 'primeng/tag';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { CheckboxModule } from 'primeng/checkbox';
 import { LearningCourse, LearningModule } from '../../models/learning-course.model';
-import { LearningArticle, LearningArticleWithModule } from '../../models/learning-article.model';
-import { LearningExercise, LearningExerciseWithModule } from '../../models/learning-exercise.model';
+import { LearningArticle } from '../../models/learning-article.model';
+import { LearningItem, LearningItemWithModule, LearningItemType } from '../../models/learning-item.model';
 import { LearningCourseService } from '../../service/learning-course.service';
-import { LearningArticleService } from '../../service/learning-article.service';
-import { LearningExerciseService } from '../../service/learning-exercise.service';
+import { LearningItemService } from '../../service/learning-item.service';
 import { StudentProfileService } from '../../service/student-profile.service';
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
 
@@ -27,8 +26,7 @@ import { AuthStateService } from '../../../../shared/services/auth-state.service
 })
 export class CourseDetailComponent implements OnInit, OnChanges {
   @Input() course: LearningCourse | null = null;
-  @Input() articlesByModule: { [moduleId: string]: LearningArticleWithModule[] } = {};
-  @Input() exercisesByModule: { [moduleId: string]: LearningExerciseWithModule[] } = {};
+  @Input() itemsByModule: { [moduleId: string]: LearningItemWithModule[] } = {};
   @Input() loading = false;
   @Input() error: string | null = null;
   @Input() expandedModules: Set<string> = new Set();
@@ -40,8 +38,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
 
   selectedModuleId: string | null = null;
   moduleProgress: Map<string, number> = new Map();
-  articleCompletionStatus: Map<string, boolean> = new Map();
-  exerciseScores: Map<string, number> = new Map(); // Map<exerciseId, scorePercentage>
+  itemStatuses: Map<string, { isCompleted: boolean; score?: number }> = new Map(); // Map<itemId, {isCompleted, score}>
   isAuthenticated = false;
   private loadFromRoute = false;
 
@@ -49,8 +46,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     @Optional() private route: ActivatedRoute,
     @Optional() private router: Router,
     @Optional() private learningCourseService: LearningCourseService,
-    @Optional() private learningArticleService: LearningArticleService,
-    @Optional() private learningExerciseService: LearningExerciseService,
+    @Optional() private learningItemService: LearningItemService,
     @Optional() private studentProfileService: StudentProfileService,
     @Optional() private authStateService: AuthStateService
   ) {
@@ -60,11 +56,9 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         const isAuth = this.authStateService.isAuthenticatedSignal();
         this.isAuthenticated = isAuth;
         if (isAuth && this.course) {
-          this.loadArticleCompletionStatuses();
-          this.loadExerciseScores();
+          this.loadItemStatuses();
         } else {
-          this.articleCompletionStatus.clear();
-          this.exerciseScores.clear();
+          this.itemStatuses.clear();
           this.initializeModuleProgress();
         }
       });
@@ -72,12 +66,12 @@ export class CourseDetailComponent implements OnInit, OnChanges {
   }
 
   ngOnInit(): void {
-    if (this.route && this.learningCourseService && this.learningArticleService) {
+    if (this.route && this.learningCourseService && this.learningItemService) {
       this.loadFromRoute = true;
       this.route.params.subscribe(params => {
         const courseId = params['courseId'];
         if (courseId) {
-          this.loadCourseAndArticles(courseId);
+          this.loadCourseAndItems(courseId);
         }
       });
     } else {
@@ -95,33 +89,26 @@ export class CourseDetailComponent implements OnInit, OnChanges {
           this.selectedModuleId = null;
           this.selectFirstModule();
           if (this.isAuthenticated) {
-            this.loadArticleCompletionStatuses();
-            this.loadExerciseScores();
+            this.loadItemStatuses();
           }
         } else if (!this.selectedModuleId) {
           this.selectFirstModule();
         }
       }
-      if (changes['articlesByModule']) {
+      if (changes['itemsByModule']) {
         this.initializeModuleProgress();
         if (this.isAuthenticated) {
-          this.loadArticleCompletionStatuses();
-          this.loadExerciseScores();
-        }
-      }
-      if (changes['exercisesByModule']) {
-        if (this.isAuthenticated) {
-          this.loadExerciseScores();
+          this.loadItemStatuses();
         }
       }
     }
   }
 
-  private loadCourseAndArticles(courseId: string): void {
+  private loadCourseAndItems(courseId: string): void {
     this.loading = true;
     this.error = null;
 
-    if (!this.learningCourseService || !this.learningArticleService) {
+    if (!this.learningCourseService || !this.learningItemService) {
       return;
     }
 
@@ -130,8 +117,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         this.course = course;
         this.initializeModuleProgress();
         this.selectFirstModule();
-        this.loadArticlesForCourse(course);
-        this.loadExercisesForCourse(course);
+        this.loadItemsForCourse(course);
       },
       error: (error) => {
         this.error = 'Курс не найден.';
@@ -141,94 +127,50 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     });
   }
 
-  private loadArticlesForCourse(course: LearningCourse): void {
-    if (!this.learningArticleService) {
+  private loadItemsForCourse(course: LearningCourse): void {
+    if (!this.learningItemService) {
       this.loading = false;
       return;
     }
 
-    this.articlesByModule = {};
+    this.itemsByModule = {};
 
-    const articleObservables = course.modules.map(module =>
-      this.learningArticleService!.getArticlesByModuleId(module.id).pipe(
-        map(articles => ({
+    const itemObservables = course.modules.map(module =>
+      this.learningItemService!.getItemsByModuleId(module.id).pipe(
+        map(items => ({
           moduleId: module.id,
-          articles: articles.map(article => ({
-            article,
+          items: items.map(item => ({
+            item,
             moduleTitle: module.title || '',
             moduleDescription: module.description || ''
           }))
         })),
         catchError(error => {
-          console.error(`Error loading articles for module ${module.id}:`, error);
-          return of({ moduleId: module.id, articles: [] });
+          console.error(`Error loading items for module ${module.id}:`, error);
+          return of({ moduleId: module.id, items: [] });
         })
       )
     );
 
-    if (articleObservables.length === 0) {
+    if (itemObservables.length === 0) {
       this.loading = false;
       return;
     }
 
-    forkJoin(articleObservables).subscribe({
+    forkJoin(itemObservables).subscribe({
       next: (results) => {
         results.forEach(result => {
-          this.articlesByModule[result.moduleId] = result.articles;
+          this.itemsByModule[result.moduleId] = result.items;
         });
         this.initializeModuleProgress();
         this.loading = false;
         if (this.isAuthenticated) {
-          this.loadArticleCompletionStatuses();
-          this.loadExerciseScores();
+          this.loadItemStatuses();
         }
       },
       error: (error) => {
-        console.error('Error loading articles:', error);
+        console.error('Error loading items:', error);
         this.loading = false;
-      }
-    });
-  }
-
-  private loadExercisesForCourse(course: LearningCourse): void {
-    if (!this.learningExerciseService) {
-      return;
-    }
-
-    this.exercisesByModule = {};
-
-    const exerciseObservables = course.modules.map(module =>
-      this.learningExerciseService!.getExercisesByModuleId(module.id).pipe(
-        map(exercises => ({
-          moduleId: module.id,
-          exercises: exercises.map(exercise => ({
-            exercise,
-            moduleTitle: module.title || '',
-            moduleDescription: module.description || ''
-          }))
-        })),
-        catchError(error => {
-          console.error(`Error loading exercises for module ${module.id}:`, error);
-          return of({ moduleId: module.id, exercises: [] });
-        })
-      )
-    );
-
-    if (exerciseObservables.length === 0) {
-      return;
-    }
-
-    forkJoin(exerciseObservables).subscribe({
-      next: (results) => {
-        results.forEach(result => {
-          this.exercisesByModule[result.moduleId] = result.exercises;
-        });
-        if (this.isAuthenticated) {
-          this.loadExerciseScores();
-        }
-      },
-      error: (error) => {
-        console.error('Error loading exercises:', error);
       }
     });
   }
@@ -242,17 +184,18 @@ export class CourseDetailComponent implements OnInit, OnChanges {
   }
 
   private calculateModuleProgress(moduleId: string): void {
-    const articles = this.articlesByModule[moduleId] || [];
-    if (articles.length === 0) {
+    const items = this.itemsByModule[moduleId] || [];
+    if (items.length === 0) {
       this.moduleProgress.set(moduleId, 0);
       return;
     }
 
-    const completedCount = articles.filter(articleWithModule => 
-      this.articleCompletionStatus.get(articleWithModule.article.id) === true
-    ).length;
+    const completedCount = items.filter(itemWithModule => {
+      const status = this.itemStatuses.get(itemWithModule.item.id);
+      return status?.isCompleted === true;
+    }).length;
 
-    const progress = Math.round((completedCount / articles.length) * 100);
+    const progress = Math.round((completedCount / items.length) * 100);
     this.moduleProgress.set(moduleId, progress);
   }
 
@@ -293,6 +236,30 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     }
   }
 
+  onItemSelected(item: LearningItem, module: LearningModule) {
+    if (item.itemType === LearningItemType.Article) {
+      // Create minimal article object for navigation (full article will be loaded by the article component)
+      const article: LearningArticle = {
+        id: item.id,
+        learningModuleId: item.learningModuleId,
+        title: item.title,
+        description: item.description,
+        number: item.number,
+        contentSections: [] // Will be loaded by the article component
+      };
+      this.onArticleSelected(article, module);
+    }
+    // Exercises are not clickable/navigable for now
+  }
+
+  isArticle(item: LearningItem): boolean {
+    return item.itemType === LearningItemType.Article;
+  }
+
+  isExercise(item: LearningItem): boolean {
+    return item.itemType === LearningItemType.Exercise;
+  }
+
   onModuleToggled(moduleId: string) {
     this.moduleToggled.emit(moduleId);
   }
@@ -305,18 +272,19 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     return this.selectedModuleId === moduleId;
   }
 
-  getSelectedModuleArticles(): LearningArticleWithModule[] {
+  getSelectedModuleItems(): LearningItemWithModule[] {
     if (!this.selectedModuleId) {
       return [];
     }
-    return this.articlesByModule[this.selectedModuleId] || [];
+    return this.itemsByModule[this.selectedModuleId] || [];
   }
 
-  getSelectedModuleExercises(): LearningExerciseWithModule[] {
-    if (!this.selectedModuleId) {
-      return [];
-    }
-    return this.exercisesByModule[this.selectedModuleId] || [];
+  getSelectedModuleArticles(): LearningItemWithModule[] {
+    return this.getSelectedModuleItems().filter(item => item.item.itemType === LearningItemType.Article);
+  }
+
+  getSelectedModuleExercises(): LearningItemWithModule[] {
+    return this.getSelectedModuleItems().filter(item => item.item.itemType === LearningItemType.Exercise);
   }
 
   getSelectedModule(): LearningModule | null {
@@ -331,7 +299,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
       this.route.params.subscribe(params => {
         const courseId = params['courseId'];
         if (courseId) {
-          this.loadCourseAndArticles(courseId);
+          this.loadCourseAndItems(courseId);
         }
       });
     } else {
@@ -339,12 +307,12 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     }
   }
 
-  getModulesWithArticles() {
+  getModulesWithItems() {
     if (!this.course) return [];
 
     return this.course.modules.map(module => ({
       ...module,
-      articles: this.articlesByModule[module.id] || []
+      items: this.itemsByModule[module.id] || []
     }));
   }
 
@@ -354,6 +322,14 @@ export class CourseDetailComponent implements OnInit, OnChanges {
 
   getModuleNumber(module: LearningModule): number {
     return module.number || 0;
+  }
+
+  getItemTitle(item: LearningItem): string {
+    return item.title || (item.itemType === LearningItemType.Article ? 'Статья' : 'Упражнение');
+  }
+
+  getItemDescription(item: LearningItem): string {
+    return item.description || 'Описание недоступно';
   }
 
   getArticleTitle(article: LearningArticle): string {
@@ -372,32 +348,31 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     return module.id;
   }
 
-  trackByArticleId(index: number, articleWithModule: LearningArticleWithModule): string {
-    return articleWithModule.article.id;
+  trackByItemId(index: number, itemWithModule: LearningItemWithModule): string {
+    return itemWithModule.item.id;
   }
 
-  trackByExerciseId(index: number, exerciseWithModule: LearningExerciseWithModule): string {
-    return exerciseWithModule.exercise.id;
+  trackByArticleId(index: number, itemWithModule: LearningItemWithModule): string {
+    return itemWithModule.item.id;
   }
 
-  getExerciseTitle(exercise: LearningExercise): string {
-    return exercise.title || 'Упражнение';
+  trackByExerciseId(index: number, itemWithModule: LearningItemWithModule): string {
+    return itemWithModule.item.id;
   }
 
-  getExerciseDescription(exercise: LearningExercise): string {
-    return exercise.description || 'Описание упражнения недоступно';
+  getItemScore(itemId: string): number {
+    const status = this.itemStatuses.get(itemId);
+    if (!status?.score) return 0;
+    // Convert score to percentage (assuming score is 0-1 or 0-100)
+    return status.score <= 1 ? Math.round(status.score * 100) : Math.round(status.score);
   }
 
-  getExerciseScore(exerciseId: string): number {
-    return this.exerciseScores.get(exerciseId) || 0;
+  isItemCompleted(itemId: string): boolean {
+    const status = this.itemStatuses.get(itemId);
+    return status?.isCompleted === true;
   }
 
-  isExerciseCompleted(exerciseId: string): boolean {
-    const score = this.exerciseScores.get(exerciseId);
-    return score !== undefined && score > 0;
-  }
-
-  private loadArticleCompletionStatuses(): void {
+  private loadItemStatuses(): void {
     if (!this.studentProfileService || !this.authStateService) {
       return;
     }
@@ -407,36 +382,41 @@ export class CourseDetailComponent implements OnInit, OnChanges {
       return;
     }
 
-    const allArticleIds: string[] = [];
-    Object.values(this.articlesByModule).forEach(articles => {
-      articles.forEach(articleWithModule => {
-        allArticleIds.push(articleWithModule.article.id);
+    const allItems: Array<{ learningItemId: string; learningItemType: 'Article' | 'Excercise' | 'Test' }> = [];
+    Object.values(this.itemsByModule).forEach(items => {
+      items.forEach(itemWithModule => {
+        allItems.push({
+          learningItemId: itemWithModule.item.id,
+          learningItemType: itemWithModule.item.itemType === LearningItemType.Article ? 'Article' : 'Excercise'
+        });
       });
     });
 
-    if (allArticleIds.length === 0) {
+    if (allItems.length === 0) {
       return;
     }
 
-    this.studentProfileService.getLearningItemStatuses({
+    this.studentProfileService.getMultipleLearningItemStatuses({
       userId: user.userId,
-      learningItemIds: allArticleIds,
-      learningItemType: 'Article'
+      items: allItems
     }).subscribe({
-      next: (statuses:any) => {
+      next: (statuses: any) => {
         statuses.forEach((status: any) => {
-          this.articleCompletionStatus.set(status.learningItemId, status.isCompleted);
+          this.itemStatuses.set(status.learningItemId, {
+            isCompleted: status.isCompleted,
+            score: status.score
+          });
         });
         this.updateAllModuleProgress();
       },
       error: (error: any) => {
-        console.error('Error loading article completion statuses:', error);
+        console.error('Error loading item statuses:', error);
       }
     });
   }
 
   isArticleCompleted(articleId: string): boolean {
-    return this.articleCompletionStatus.get(articleId) || false;
+    return this.isItemCompleted(articleId);
   }
 
   onArticleCompletionChange(articleId: string, isCompleted: boolean): void {
@@ -449,9 +429,10 @@ export class CourseDetailComponent implements OnInit, OnChanges {
       return;
     }
 
-    this.articleCompletionStatus.set(articleId, isCompleted);
+    const currentStatus = this.itemStatuses.get(articleId) || { isCompleted: false };
+    this.itemStatuses.set(articleId, { ...currentStatus, isCompleted });
 
-    const moduleId = this.findModuleIdForArticle(articleId);
+    const moduleId = this.findModuleIdForItem(articleId);
     if (moduleId) {
       this.calculateModuleProgress(moduleId);
     }
@@ -466,7 +447,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
       },
       error: (error:any) => {
         console.error('Error updating article completion status:', error);
-        this.articleCompletionStatus.set(articleId, !isCompleted);
+        this.itemStatuses.set(articleId, { ...currentStatus, isCompleted: !isCompleted });
         if (moduleId) {
           this.calculateModuleProgress(moduleId);
         }
@@ -474,9 +455,9 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     });
   }
 
-  private findModuleIdForArticle(articleId: string): string | null {
-    for (const [moduleId, articles] of Object.entries(this.articlesByModule)) {
-      if (articles.some(articleWithModule => articleWithModule.article.id === articleId)) {
+  private findModuleIdForItem(itemId: string): string | null {
+    for (const [moduleId, items] of Object.entries(this.itemsByModule)) {
+      if (items.some(itemWithModule => itemWithModule.item.id === itemId)) {
         return moduleId;
       }
     }
@@ -489,45 +470,5 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         this.calculateModuleProgress(module.id);
       });
     }
-  }
-
-  private loadExerciseScores(): void {
-    if (!this.studentProfileService || !this.authStateService) {
-      return;
-    }
-
-    const user = this.authStateService.getUser();
-    if (!user || !user.userId) {
-      return;
-    }
-
-    const allExerciseIds: string[] = [];
-    Object.values(this.exercisesByModule).forEach(exercises => {
-      exercises.forEach(exerciseWithModule => {
-        allExerciseIds.push(exerciseWithModule.exercise.id);
-      });
-    });
-
-    if (allExerciseIds.length === 0) {
-      return;
-    }
-
-    this.studentProfileService.getLearningItemStatuses({
-      userId: user.userId,
-      learningItemIds: allExerciseIds,
-      learningItemType: 'Excercise'
-    }).subscribe({
-      next: (statuses: any) => {
-        statuses.forEach((status: any) => {
-          // Convert score to percentage (assuming score is 0-1 or 0-100)
-          const score = status.score ?? 0;
-          const scorePercentage = score <= 1 ? Math.round(score * 100) : Math.round(score);
-          this.exerciseScores.set(status.learningItemId, scorePercentage);
-        });
-      },
-      error: (error: any) => {
-        console.error('Error loading exercise scores:', error);
-      }
-    });
   }
 }
