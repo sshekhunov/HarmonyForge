@@ -23,27 +23,29 @@
               <h2 class="panel-title">Загрузка файла</h2>
             </div>
             <div class="panel-body">
-              <p-fileupload name="musicScores[]"
-                  chooseLabel="Загрузить" uploadLabel="Проверить" cancelLabel="Отменить"
-                  chooseIcon="pi pi-upload"
-                  uploadIcon="pi pi-sparkles"
-                  [multiple]="false"
-                  maxFileSize="1000000"
-                  [customUpload]="true"
-                  (uploadHandler)="onUpload($event)"
-                  (onSelect)="onSelectedFiles($event)"
-                  (onClear)="onClear()">
+              <div class="upload-card">
+                <p-fileupload name="musicScores[]"
+                    chooseLabel="Загрузить" uploadLabel="Проверить" cancelLabel="Отменить"
+                    chooseIcon="pi pi-upload"
+                    uploadIcon="pi pi-sparkles"
+                    [multiple]="false"
+                    maxFileSize="1000000"
+                    [customUpload]="true"
+                    (uploadHandler)="onUpload($event)"
+                    (onSelect)="onSelectedFiles($event)"
+                    (onClear)="onClear()">
 
-                  <ng-template #empty>
-                      <div class="flex items-center justify-center flex-col upload-empty">
-                          <i class="pi pi-cloud-upload upload-icon"></i>
-                          <p class="mt-6 mb-0">Перетащите файл в формате MusicXml</p>
-                      </div>
-                  </ng-template>
-                  <ng-template #content>
+                    <ng-template #empty>
+                        <div class="flex items-center justify-center flex-col upload-empty">
+                            <i class="pi pi-cloud-upload upload-icon"></i>
+                            <p class="mt-6 mb-0">Перетащите файл в формате MusicXml</p>
+                        </div>
+                    </ng-template>
+                    <ng-template #content>
 
-                  </ng-template>
-              </p-fileupload>
+                    </ng-template>
+                </p-fileupload>
+              </div>
 
               @if (musicXml != '')
               {
