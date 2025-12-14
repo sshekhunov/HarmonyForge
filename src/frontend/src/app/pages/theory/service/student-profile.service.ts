@@ -12,12 +12,6 @@ export interface UpdateLearningItemStatusRequest {
 
 export interface GetLearningItemStatusesRequest {
   userId: string;
-  learningItemIds: string[];
-  learningItemType: 'Article' | 'Excercise' | 'Test';
-}
-
-export interface GetMultipleLearningItemStatusesRequest {
-  userId: string;
   items: LearningItemStatusRequestItem[];
 }
 
@@ -46,10 +40,6 @@ export class StudentProfileService {
 
   getLearningItemStatuses(request: GetLearningItemStatusesRequest): Observable<LearningItemStatusDto[]> {
     return this.http.post<LearningItemStatusDto[]>(`${this.apiUrl}/get-statuses`, request);
-  }
-
-  getMultipleLearningItemStatuses(request: GetMultipleLearningItemStatusesRequest): Observable<LearningItemStatusDto[]> {
-    return this.http.post<LearningItemStatusDto[]>(`${this.apiUrl}/get-multiple-statuses`, request);
   }
 }
 

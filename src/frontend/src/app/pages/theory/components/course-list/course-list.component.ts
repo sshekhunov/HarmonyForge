@@ -157,7 +157,7 @@ export class CourseListComponent implements OnInit, OnChanges {
           return;
         }
 
-        this.studentProfileService.getMultipleLearningItemStatuses({
+        this.studentProfileService.getLearningItemStatuses({
           userId: userId,
           items: allItems
         }).subscribe({

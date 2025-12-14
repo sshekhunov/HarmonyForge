@@ -63,39 +63,6 @@ public class LearningItemStatusService : ILearningItemStatusService
     {
         var student = await _studentRepository.GetByUserIdAsync(request.UserId, cancellationToken);
 
-        if (student == null || !request.LearningItemIds.Any())
-        {
-            return request.LearningItemIds.Select(id => new LearningItemStatusDto
-            {
-                LearningItemId = id,
-                IsCompleted = false
-            }).ToList();
-        }
-
-        var statuses = await _learningItemStatusRepository.GetByStudentAndItemsAsync(
-            student.Id,
-            request.LearningItemIds,
-            request.LearningItemType,
-            cancellationToken);
-
-        var statusMap = statuses.ToDictionary(s => s.LearningItemId, s => s);
-
-        return request.LearningItemIds.Select(id => 
-        {
-            var status = statusMap.GetValueOrDefault(id);
-            return new LearningItemStatusDto
-            {
-                LearningItemId = id,
-                IsCompleted = status?.IsCompleted ?? false,
-                Score = status?.Score
-            };
-        }).ToList();
-    }
-
-    public async Task<IList<LearningItemStatusDto>> GetMultipleLearningItemStatusesAsync(GetMultipleLearningItemStatusesRequest request, CancellationToken cancellationToken = default)
-    {
-        var student = await _studentRepository.GetByUserIdAsync(request.UserId, cancellationToken);
-
         if (student == null || !request.Items.Any())
         {
             return request.Items.Select(item => new LearningItemStatusDto

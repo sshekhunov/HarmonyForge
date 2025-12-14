@@ -396,7 +396,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
       return;
     }
 
-    this.studentProfileService.getMultipleLearningItemStatuses({
+    this.studentProfileService.getLearningItemStatuses({
       userId: user.userId,
       items: allItems
     }).subscribe({
