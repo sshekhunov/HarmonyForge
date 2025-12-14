@@ -67,7 +67,7 @@
   </div>
 
   <div class="course-content">
-    <div class="articles-content">
+    <div class="learning-items-content">
       <div *ngIf="getSelectedModule()" class="selected-module-content">
         <div class="module-header">
           <h2 class="module-content-title">{{ getSelectedModule()?.title }}</h2>
@@ -76,25 +76,25 @@
           </p>
         </div>
 
-        <div class="articles-list">
+        <div class="learning-items-list">
           <div *ngFor="let itemWithModule of getSelectedModuleItems(); trackBy: trackByItemId"
-               class="article-item"
+               class="learning-item"
                [class.exercise-item]="itemWithModule.item.itemType === 1">
-            <div class="article-main-content" 
+            <div class="learning-item-main-content"
                  [class.exercise-content]="itemWithModule.item.itemType === 1"
                  (click)="itemWithModule.item.itemType === 0 ? onItemSelected(itemWithModule.item, getSelectedModule()!) : null">
-              <div class="article-icon">
-                <i [class]="itemWithModule.item.itemType === 0 ? 'pi pi-file' : 'pi pi-cog'"></i>
+              <div class="learning-item-icon">
+                <i [class]="itemWithModule.item.itemType === 0 ? 'pi pi-book' : 'pi pi-pencil'"></i>
               </div>
-              <div class="article-content">
-                <h4 class="article-title">{{ getItemTitle(itemWithModule.item) }}</h4>
-                <p class="article-description" *ngIf="getItemDescription(itemWithModule.item)">
+              <div class="learning-item-content">
+                <h4 class="learning-item-title">{{ getItemTitle(itemWithModule.item) }}</h4>
+                <p class="learning-item-description" *ngIf="getItemDescription(itemWithModule.item)">
                   {{ getItemDescription(itemWithModule.item) }}
                 </p>
               </div>
             </div>
-            <div *ngIf="isAuthenticated" 
-                 [class]="itemWithModule.item.itemType === 0 ? 'article-checkbox' : 'exercise-checkbox-container'"
+            <div *ngIf="isAuthenticated"
+                 [class]="itemWithModule.item.itemType === 0 ? 'learning-item-checkbox' : 'exercise-checkbox-container'"
                  (click)="$event.stopPropagation()">
               <span *ngIf="itemWithModule.item.itemType === 1" class="exercise-score">{{ getItemScore(itemWithModule.item.id) }}%</span>
               <p-checkbox
@@ -107,8 +107,8 @@
             </div>
           </div>
 
-          <div *ngIf="getSelectedModuleItems().length === 0" class="no-articles">
-            <i class="pi pi-file-o no-articles-icon"></i>
+          <div *ngIf="getSelectedModuleItems().length === 0" class="no-learning-items">
+            <i class="pi pi-file-o no-learning-items-icon"></i>
             <p>Статьи и упражнения для этого модуля пока недоступны.</p>
           </div>
         </div>
