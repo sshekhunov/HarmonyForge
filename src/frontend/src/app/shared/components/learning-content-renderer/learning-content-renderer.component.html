@@ -1,0 +1,53 @@
+<div class="section-content">
+  <div *ngFor="let contentItem of contentItems; trackBy: trackByContentItemOrder"
+       class="content-item">
+
+    <!-- Text Content -->
+    <div *ngIf="contentItem.type === 0" class="text-content">
+      <div class="content-wrapper">
+        <p class="content-text">{{ contentItem.content }}</p>
+      </div>
+    </div>
+
+    <!-- Image Content -->
+    <div *ngIf="contentItem.type === 1" class="image-content">
+      <div class="content-wrapper">
+        <img [src]="contentItem.content"
+             [alt]="'Изображение для ' + (sectionTitle || 'контента')"
+             class="content-image"
+             loading="lazy">
+      </div>
+    </div>
+
+    <!-- Video Content -->
+    <div *ngIf="contentItem.type === 2" class="video-content">
+      <div class="content-wrapper">
+        <div *ngIf="isVideoContent(contentItem.content)" class="video-embed">
+          <iframe [src]="getVideoEmbedUrl(contentItem.content)"
+                  frameborder="0"
+                  allowfullscreen
+                  class="video-iframe">
+          </iframe>
+        </div>
+        <div *ngIf="!isVideoContent(contentItem.content)" class="video-link">
+          <a [href]="contentItem.content" target="_blank" class="video-link-button">
+            <i class="pi pi-video"></i>
+            Открыть видео
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- MusicXml Content -->
+    <div *ngIf="contentItem.type === 3" class="musicxml-content">
+      <div class="content-wrapper">
+        <lib-osmd-renderer
+          [source]="contentItem.content"
+          [showTitleAndAuthor]="false"
+          [partName]="getPartName(sectionTitle, contentItem.order)">
+        </lib-osmd-renderer>
+      </div>
+    </div>
+  </div>
+</div>
+

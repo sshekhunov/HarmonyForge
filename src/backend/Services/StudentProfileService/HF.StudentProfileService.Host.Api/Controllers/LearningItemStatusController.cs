@@ -68,5 +68,6 @@ public class LearningItemStatusController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, "An internal server error occurred while getting learning item statuses");
         }
     }
+
 }
 

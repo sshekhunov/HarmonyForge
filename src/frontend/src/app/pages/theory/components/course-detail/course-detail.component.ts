@@ -10,9 +10,10 @@ import { TagModule } from 'primeng/tag';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { CheckboxModule } from 'primeng/checkbox';
 import { LearningCourse, LearningModule } from '../../models/learning-course.model';
-import { LearningArticle, LearningArticleWithModule } from '../../models/learning-article.model';
+import { LearningArticle } from '../../models/learning-article.model';
+import { LearningItem, LearningItemWithModule, LearningItemType } from '../../models/learning-item.model';
 import { LearningCourseService } from '../../service/learning-course.service';
-import { LearningArticleService } from '../../service/learning-article.service';
+import { LearningItemService } from '../../service/learning-item.service';
 import { StudentProfileService } from '../../service/student-profile.service';
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
 
@@ -25,7 +26,7 @@ import { AuthStateService } from '../../../../shared/services/auth-state.service
 })
 export class CourseDetailComponent implements OnInit, OnChanges {
   @Input() course: LearningCourse | null = null;
-  @Input() articlesByModule: { [moduleId: string]: LearningArticleWithModule[] } = {};
+  @Input() itemsByModule: { [moduleId: string]: LearningItemWithModule[] } = {};
   @Input() loading = false;
   @Input() error: string | null = null;
   @Input() expandedModules: Set<string> = new Set();
@@ -37,7 +38,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
 
   selectedModuleId: string | null = null;
   moduleProgress: Map<string, number> = new Map();
-  articleCompletionStatus: Map<string, boolean> = new Map();
+  itemStatuses: Map<string, { isCompleted: boolean; score?: number }> = new Map(); // Map<itemId, {isCompleted, score}>
   isAuthenticated = false;
   private loadFromRoute = false;
 
@@ -45,7 +46,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     @Optional() private route: ActivatedRoute,
     @Optional() private router: Router,
     @Optional() private learningCourseService: LearningCourseService,
-    @Optional() private learningArticleService: LearningArticleService,
+    @Optional() private learningItemService: LearningItemService,
     @Optional() private studentProfileService: StudentProfileService,
     @Optional() private authStateService: AuthStateService
   ) {
@@ -55,9 +56,9 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         const isAuth = this.authStateService.isAuthenticatedSignal();
         this.isAuthenticated = isAuth;
         if (isAuth && this.course) {
-          this.loadArticleCompletionStatuses();
+          this.loadItemStatuses();
         } else {
-          this.articleCompletionStatus.clear();
+          this.itemStatuses.clear();
           this.initializeModuleProgress();
         }
       });
@@ -65,17 +66,17 @@ export class CourseDetailComponent implements OnInit, OnChanges {
   }
 
   ngOnInit(): void {
-    if (this.route && this.learningCourseService && this.learningArticleService) {
+    if (this.route && this.learningCourseService && this.learningItemService) {
       this.loadFromRoute = true;
       this.route.params.subscribe(params => {
         const courseId = params['courseId'];
         if (courseId) {
-          this.loadCourseAndArticles(courseId);
+          this.loadCourseAndItems(courseId);
         }
       });
     } else {
       this.initializeModuleProgress();
-      this.selectFirstModule();
+      this.selectDefaultModule();
     }
   }
 
@@ -86,28 +87,33 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         const previousCourse = changes['course'].previousValue;
         if (!previousCourse || previousCourse.id !== this.course.id) {
           this.selectedModuleId = null;
-          this.selectFirstModule();
+          const savedModuleId = this.getSavedModuleId(this.course.id);
+          if (savedModuleId && this.course.modules.some(m => m.id === savedModuleId)) {
+            this.selectedModuleId = savedModuleId;
+          } else {
+            this.selectDefaultModule();
+          }
           if (this.isAuthenticated) {
-            this.loadArticleCompletionStatuses();
+            this.loadItemStatuses();
           }
         } else if (!this.selectedModuleId) {
-          this.selectFirstModule();
+          this.selectDefaultModule();
         }
       }
-      if (changes['articlesByModule']) {
+      if (changes['itemsByModule']) {
         this.initializeModuleProgress();
         if (this.isAuthenticated) {
-          this.loadArticleCompletionStatuses();
+          this.loadItemStatuses();
         }
       }
     }
   }
 
-  private loadCourseAndArticles(courseId: string): void {
+  private loadCourseAndItems(courseId: string): void {
     this.loading = true;
     this.error = null;
 
-    if (!this.learningCourseService || !this.learningArticleService) {
+    if (!this.learningCourseService || !this.learningItemService) {
       return;
     }
 
@@ -115,8 +121,14 @@ export class CourseDetailComponent implements OnInit, OnChanges {
       next: (course) => {
         this.course = course;
         this.initializeModuleProgress();
-        this.selectFirstModule();
-        this.loadArticlesForCourse(course);
+        // Try to restore saved module ID before selecting
+        const savedModuleId = this.getSavedModuleId(course.id);
+        if (savedModuleId && course.modules.some(m => m.id === savedModuleId)) {
+          this.selectedModuleId = savedModuleId;
+        } else {
+          this.selectDefaultModule();
+        }
+        this.loadItemsForCourse(course);
       },
       error: (error) => {
         this.error = 'Курс не найден.';
@@ -126,49 +138,49 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     });
   }
 
-  private loadArticlesForCourse(course: LearningCourse): void {
-    if (!this.learningArticleService) {
+  private loadItemsForCourse(course: LearningCourse): void {
+    if (!this.learningItemService) {
       this.loading = false;
       return;
     }
 
-    this.articlesByModule = {};
+    this.itemsByModule = {};
 
-    const articleObservables = course.modules.map(module =>
-      this.learningArticleService!.getArticlesByModuleId(module.id).pipe(
-        map(articles => ({
+    const itemObservables = course.modules.map(module =>
+      this.learningItemService!.getItemsByModuleId(module.id).pipe(
+        map(items => ({
           moduleId: module.id,
-          articles: articles.map(article => ({
-            article,
+          items: items.map(item => ({
+            item,
             moduleTitle: module.title || '',
             moduleDescription: module.description || ''
           }))
         })),
         catchError(error => {
-          console.error(`Error loading articles for module ${module.id}:`, error);
-          return of({ moduleId: module.id, articles: [] });
+          console.error(`Error loading items for module ${module.id}:`, error);
+          return of({ moduleId: module.id, items: [] });
         })
       )
     );
 
-    if (articleObservables.length === 0) {
+    if (itemObservables.length === 0) {
       this.loading = false;
       return;
     }
 
-    forkJoin(articleObservables).subscribe({
+    forkJoin(itemObservables).subscribe({
       next: (results) => {
         results.forEach(result => {
-          this.articlesByModule[result.moduleId] = result.articles;
+          this.itemsByModule[result.moduleId] = result.items;
         });
         this.initializeModuleProgress();
         this.loading = false;
         if (this.isAuthenticated) {
-          this.loadArticleCompletionStatuses();
+          this.loadItemStatuses();
         }
       },
       error: (error) => {
-        console.error('Error loading articles:', error);
+        console.error('Error loading items:', error);
         this.loading = false;
       }
     });
@@ -183,23 +195,50 @@ export class CourseDetailComponent implements OnInit, OnChanges {
   }
 
   private calculateModuleProgress(moduleId: string): void {
-    const articles = this.articlesByModule[moduleId] || [];
-    if (articles.length === 0) {
+    const items = this.itemsByModule[moduleId] || [];
+    if (items.length === 0) {
       this.moduleProgress.set(moduleId, 0);
       return;
     }
 
-    const completedCount = articles.filter(articleWithModule => 
-      this.articleCompletionStatus.get(articleWithModule.article.id) === true
-    ).length;
+    const completedCount = items.filter(itemWithModule => {
+      const status = this.itemStatuses.get(itemWithModule.item.id);
+      return status?.isCompleted === true;
+    }).length;
 
-    const progress = Math.round((completedCount / articles.length) * 100);
+    const progress = Math.round((completedCount / items.length) * 100);
     this.moduleProgress.set(moduleId, progress);
   }
 
-  private selectFirstModule(): void {
+  private selectDefaultModule(): void {
     if (this.course?.modules && this.course.modules.length > 0 && !this.selectedModuleId) {
-      this.selectedModuleId = this.course.modules[0].id;
+      const savedModuleId = this.getSavedModuleId(this.course.id);
+
+      if (savedModuleId && this.course.modules.some(m => m.id === savedModuleId)) {
+        this.selectedModuleId = savedModuleId;
+      } else {
+        this.selectedModuleId = this.course.modules[0].id;
+        this.saveModuleId(this.course.id, this.selectedModuleId);
+      }
+    }
+  }
+
+  private getSavedModuleId(courseId: string): string | null {
+    try {
+      const key = `selectedModule_${courseId}`;
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.warn('Error reading from localStorage:', error);
+      return null;
+    }
+  }
+
+  private saveModuleId(courseId: string, moduleId: string): void {
+    try {
+      const key = `selectedModule_${courseId}`;
+      localStorage.setItem(key, moduleId);
+    } catch (error) {
+      console.warn('Error saving to localStorage:', error);
     }
   }
 
@@ -226,12 +265,35 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     }
   }
 
-  onArticleSelected(article: LearningArticle, module: LearningModule) {
-    if (this.loadFromRoute && this.router && this.course) {
-      this.router.navigate(['/theory/course', this.course.id, 'article', article.id]);
-    } else {
-      this.articleSelected.emit({ article, module });
+  onItemSelected(item: LearningItem, module: LearningModule) {
+    if (item.itemType === LearningItemType.Article) {
+      // Create minimal article object for navigation (full article will be loaded by the article component)
+      const article: LearningArticle = {
+        id: item.id,
+        learningModuleId: item.learningModuleId,
+        title: item.title,
+        description: item.description,
+        number: item.number,
+        contentSections: []
+      };
+        if (this.loadFromRoute && this.router && this.course) {
+        this.router.navigate(['/theory/course', this.course.id, 'article', article.id]);
+        } else {
+        this.articleSelected.emit({ article, module });
+        }
+    } else if (item.itemType === LearningItemType.Exercise) {
+      if (this.loadFromRoute && this.router && this.course) {
+        this.router.navigate(['/theory/course', this.course.id, 'exercise', item.id]);
+      }
     }
+  }
+
+  isArticle(item: LearningItem): boolean {
+    return item.itemType === LearningItemType.Article;
+  }
+
+  isExercise(item: LearningItem): boolean {
+    return item.itemType === LearningItemType.Exercise;
   }
 
   onModuleToggled(moduleId: string) {
@@ -240,17 +302,28 @@ export class CourseDetailComponent implements OnInit, OnChanges {
 
   onModuleSelected(moduleId: string) {
     this.selectedModuleId = moduleId;
+    if (this.course) {
+      this.saveModuleId(this.course.id, moduleId);
+    }
   }
 
   isModuleSelected(moduleId: string): boolean {
     return this.selectedModuleId === moduleId;
   }
 
-  getSelectedModuleArticles(): LearningArticleWithModule[] {
+  getSelectedModuleItems(): LearningItemWithModule[] {
     if (!this.selectedModuleId) {
       return [];
     }
-    return this.articlesByModule[this.selectedModuleId] || [];
+    return this.itemsByModule[this.selectedModuleId] || [];
+  }
+
+  getSelectedModuleArticles(): LearningItemWithModule[] {
+    return this.getSelectedModuleItems().filter(item => item.item.itemType === LearningItemType.Article);
+  }
+
+  getSelectedModuleExercises(): LearningItemWithModule[] {
+    return this.getSelectedModuleItems().filter(item => item.item.itemType === LearningItemType.Exercise);
   }
 
   getSelectedModule(): LearningModule | null {
@@ -265,7 +338,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
       this.route.params.subscribe(params => {
         const courseId = params['courseId'];
         if (courseId) {
-          this.loadCourseAndArticles(courseId);
+          this.loadCourseAndItems(courseId);
         }
       });
     } else {
@@ -273,12 +346,12 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     }
   }
 
-  getModulesWithArticles() {
+  getModulesWithItems() {
     if (!this.course) return [];
 
     return this.course.modules.map(module => ({
       ...module,
-      articles: this.articlesByModule[module.id] || []
+      items: this.itemsByModule[module.id] || []
     }));
   }
 
@@ -288,6 +361,14 @@ export class CourseDetailComponent implements OnInit, OnChanges {
 
   getModuleNumber(module: LearningModule): number {
     return module.number || 0;
+  }
+
+  getItemTitle(item: LearningItem): string {
+    return item.title || (item.itemType === LearningItemType.Article ? 'Статья' : 'Упражнение');
+  }
+
+  getItemDescription(item: LearningItem): string {
+    return item.description || 'Описание недоступно';
   }
 
   getArticleTitle(article: LearningArticle): string {
@@ -306,11 +387,31 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     return module.id;
   }
 
-  trackByArticleId(index: number, articleWithModule: LearningArticleWithModule): string {
-    return articleWithModule.article.id;
+  trackByItemId(index: number, itemWithModule: LearningItemWithModule): string {
+    return itemWithModule.item.id;
   }
 
-  private loadArticleCompletionStatuses(): void {
+  trackByArticleId(index: number, itemWithModule: LearningItemWithModule): string {
+    return itemWithModule.item.id;
+  }
+
+  trackByExerciseId(index: number, itemWithModule: LearningItemWithModule): string {
+    return itemWithModule.item.id;
+  }
+
+  getItemScore(itemId: string): number {
+    const status = this.itemStatuses.get(itemId);
+    if (!status?.score) return 0;
+    // Convert score to percentage (assuming score is 0-1 or 0-100)
+    return status.score <= 1 ? Math.round(status.score * 100) : Math.round(status.score);
+  }
+
+  isItemCompleted(itemId: string): boolean {
+    const status = this.itemStatuses.get(itemId);
+    return status?.isCompleted === true;
+  }
+
+  private loadItemStatuses(): void {
     if (!this.studentProfileService || !this.authStateService) {
       return;
     }
@@ -320,36 +421,41 @@ export class CourseDetailComponent implements OnInit, OnChanges {
       return;
     }
 
-    const allArticleIds: string[] = [];
-    Object.values(this.articlesByModule).forEach(articles => {
-      articles.forEach(articleWithModule => {
-        allArticleIds.push(articleWithModule.article.id);
+    const allItems: Array<{ learningItemId: string; learningItemType: 'Article' | 'Excercise' | 'Test' }> = [];
+    Object.values(this.itemsByModule).forEach(items => {
+      items.forEach(itemWithModule => {
+        allItems.push({
+          learningItemId: itemWithModule.item.id,
+          learningItemType: itemWithModule.item.itemType === LearningItemType.Article ? 'Article' : 'Excercise'
+        });
       });
     });
 
-    if (allArticleIds.length === 0) {
+    if (allItems.length === 0) {
       return;
     }
 
     this.studentProfileService.getLearningItemStatuses({
       userId: user.userId,
-      learningItemIds: allArticleIds,
-      learningItemType: 'Article'
+      items: allItems
     }).subscribe({
-      next: (statuses:any) => {
+      next: (statuses: any) => {
         statuses.forEach((status: any) => {
-          this.articleCompletionStatus.set(status.learningItemId, status.isCompleted);
+          this.itemStatuses.set(status.learningItemId, {
+            isCompleted: status.isCompleted,
+            score: status.score
+          });
         });
         this.updateAllModuleProgress();
       },
       error: (error: any) => {
-        console.error('Error loading article completion statuses:', error);
+        console.error('Error loading item statuses:', error);
       }
     });
   }
 
   isArticleCompleted(articleId: string): boolean {
-    return this.articleCompletionStatus.get(articleId) || false;
+    return this.isItemCompleted(articleId);
   }
 
   onArticleCompletionChange(articleId: string, isCompleted: boolean): void {
@@ -362,9 +468,10 @@ export class CourseDetailComponent implements OnInit, OnChanges {
       return;
     }
 
-    this.articleCompletionStatus.set(articleId, isCompleted);
+    const currentStatus = this.itemStatuses.get(articleId) || { isCompleted: false };
+    this.itemStatuses.set(articleId, { ...currentStatus, isCompleted });
 
-    const moduleId = this.findModuleIdForArticle(articleId);
+    const moduleId = this.findModuleIdForItem(articleId);
     if (moduleId) {
       this.calculateModuleProgress(moduleId);
     }
@@ -379,7 +486,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
       },
       error: (error:any) => {
         console.error('Error updating article completion status:', error);
-        this.articleCompletionStatus.set(articleId, !isCompleted);
+        this.itemStatuses.set(articleId, { ...currentStatus, isCompleted: !isCompleted });
         if (moduleId) {
           this.calculateModuleProgress(moduleId);
         }
@@ -387,9 +494,9 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     });
   }
 
-  private findModuleIdForArticle(articleId: string): string | null {
-    for (const [moduleId, articles] of Object.entries(this.articlesByModule)) {
-      if (articles.some(articleWithModule => articleWithModule.article.id === articleId)) {
+  private findModuleIdForItem(itemId: string): string | null {
+    for (const [moduleId, items] of Object.entries(this.itemsByModule)) {
+      if (items.some(itemWithModule => itemWithModule.item.id === itemId)) {
         return moduleId;
       }
     }

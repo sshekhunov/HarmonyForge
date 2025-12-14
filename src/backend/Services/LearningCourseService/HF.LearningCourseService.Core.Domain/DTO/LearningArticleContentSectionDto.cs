@@ -11,5 +11,5 @@ public class LearningArticleContentSectionDto
     [Range(0, int.MaxValue, ErrorMessage = "Order must be non-negative")]
     public int Order { get; set; } = 0;
 
-    public ICollection<LearningArticleContentItemDto> ContentItems { get; set; } = [];
+    public ICollection<LearningContentItemDto> ContentItems { get; set; } = [];
 }

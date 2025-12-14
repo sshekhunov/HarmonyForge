@@ -47,7 +47,7 @@ public static class LearningArticleContentSectionMapper
         {
             Title = entity.Title,
             Order = entity.Order,
-            ContentItems = entity.ContentItems.Select(LearningArticleContentItemMapper.ToDto).ToList()
+            ContentItems = entity.ContentItems.Select(LearningContentItemMapper.ToDto).ToList()
         };
     }
 
@@ -64,7 +64,7 @@ public static class LearningArticleContentSectionMapper
             Order = dto.Order
         };
         
-        section.AddContentItems(dto.ContentItems.Select(LearningArticleContentItemMapper.ToEntity).ToList());
+        section.AddContentItems(dto.ContentItems.Select(LearningContentItemMapper.ToEntity).ToList());
         return section;
     }
 
@@ -74,11 +74,11 @@ public static class LearningArticleContentSectionMapper
     }
 }
 
-public static class LearningArticleContentItemMapper
+public static class LearningContentItemMapper
 {
-    public static LearningArticleContentItemDto ToDto(LearningArticleContentItem entity)
+    public static LearningContentItemDto ToDto(LearningContentItem entity)
     {
-        return new LearningArticleContentItemDto
+        return new LearningContentItemDto
         {
             Content = entity.Content,
             Order = entity.Order,
@@ -86,14 +86,14 @@ public static class LearningArticleContentItemMapper
         };
     }
 
-    public static IList<LearningArticleContentItemDto> ToDtoList(IEnumerable<LearningArticleContentItem> entities)
+    public static IList<LearningContentItemDto> ToDtoList(IEnumerable<LearningContentItem> entities)
     {
         return entities.Select(ToDto).ToList();
     }
 
-    public static LearningArticleContentItem ToEntity(LearningArticleContentItemDto dto)
+    public static LearningContentItem ToEntity(LearningContentItemDto dto)
     {
-        return new LearningArticleContentItem
+        return new LearningContentItem
         {
             Content = dto.Content,
             Order = dto.Order,
@@ -101,7 +101,7 @@ public static class LearningArticleContentItemMapper
         };
     }
 
-    public static IList<LearningArticleContentItem> ToEntityList(IEnumerable<LearningArticleContentItemDto> dtos)
+    public static IList<LearningContentItem> ToEntityList(IEnumerable<LearningContentItemDto> dtos)
     {
         return dtos.Select(ToEntity).ToList();
     }

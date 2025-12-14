@@ -63,27 +63,33 @@ public class LearningItemStatusService : ILearningItemStatusService
     {
         var student = await _studentRepository.GetByUserIdAsync(request.UserId, cancellationToken);
 
-        if (student == null || !request.LearningItemIds.Any())
+        if (student == null || !request.Items.Any())
         {
-            return request.LearningItemIds.Select(id => new LearningItemStatusDto
+            return request.Items.Select(item => new LearningItemStatusDto
             {
-                LearningItemId = id,
-                IsCompleted = false
+                LearningItemId = item.LearningItemId,
+                IsCompleted = false,
+                Score = null
             }).ToList();
         }
 
-        var statuses = await _learningItemStatusRepository.GetByStudentAndItemsAsync(
+        var items = request.Items.Select(item => (item.LearningItemId, item.LearningItemType)).ToList();
+        var statuses = await _learningItemStatusRepository.GetByStudentAndMultipleItemsAsync(
             student.Id,
-            request.LearningItemIds,
-            request.LearningItemType,
+            items,
             cancellationToken);
 
-        var statusMap = statuses.ToDictionary(s => s.LearningItemId, s => s.IsCompleted);
+        var statusMap = statuses.ToDictionary(s => (s.LearningItemId, s.LearningItemType), s => s);
 
-        return request.LearningItemIds.Select(id => new LearningItemStatusDto
+        return request.Items.Select(item =>
         {
-            LearningItemId = id,
-            IsCompleted = statusMap.GetValueOrDefault(id, false)
+            var status = statusMap.GetValueOrDefault((item.LearningItemId, item.LearningItemType));
+            return new LearningItemStatusDto
+            {
+                LearningItemId = item.LearningItemId,
+                IsCompleted = status?.IsCompleted ?? false,
+                Score = status?.Score
+            };
         }).ToList();
     }
 }

@@ -1,14 +1,13 @@
 import { Component, Input, OnInit, Optional } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { TagModule } from 'primeng/tag';
 import { DividerModule } from 'primeng/divider';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { OsmdRendererModule } from '@/shared/components/osmd-renderer/osmd-renderer.module';
-import { LearningArticle, LearningArticleContentSection, LearningArticleContentItem } from '../../models/learning-article.model';
+import { LearningArticle, LearningArticleContentSection } from '../../models/learning-article.model';
+import { LearningContentRendererComponent } from '../../../../shared/components/learning-content-renderer/learning-content-renderer.component';
 import { LearningCourseService } from '../../service/learning-course.service';
 import { LearningArticleService } from '../../service/learning-article.service';
 import { StudentProfileService } from '../../service/student-profile.service';
@@ -17,7 +16,7 @@ import { AuthStateService } from '../../../../shared/services/auth-state.service
 @Component({
   selector: 'app-learning-article',
   standalone: true,
-  imports: [CommonModule, ButtonModule, CardModule, TagModule, DividerModule, ProgressSpinnerModule, OsmdRendererModule, RouterModule],
+  imports: [CommonModule, ButtonModule, CardModule, TagModule, DividerModule, ProgressSpinnerModule, RouterModule, LearningContentRendererComponent],
   templateUrl: './learning-article.component.html',
   styleUrls: ['./learning-article.component.scss']
 })
@@ -31,7 +30,6 @@ export class LearningArticleComponent implements OnInit {
   courseId: string | null = null;
 
   constructor(
-    private sanitizer: DomSanitizer,
     @Optional() private route: ActivatedRoute,
     @Optional() private router: Router,
     @Optional() private learningCourseService: LearningCourseService,
@@ -109,61 +107,8 @@ export class LearningArticleComponent implements OnInit {
     }
   }
 
-  isVideoContent(content: string): boolean {
-    return content.includes('youtube.com') ||
-           content.includes('youtu.be') ||
-           content.includes('vimeo.com') ||
-           content.includes('youtube-nocookie.com');
-  }
-
-  getVideoEmbedUrl(url: string): SafeResourceUrl {
-    let embedUrl: string;
-
-    if (url.includes('youtube.com/watch?v=')) {
-      const videoId = url.split('v=')[1].split('&')[0];
-      embedUrl = `https://www.youtube.com/embed/${videoId}`;
-    } else if (url.includes('youtu.be/')) {
-      const videoId = url.split('youtu.be/')[1].split('?')[0];
-      embedUrl = `https://www.youtube.com/embed/${videoId}`;
-    } else if (url.includes('youtube.com/embed/')) {
-      // Already an embed URL
-      embedUrl = url;
-    } else if (url.includes('youtube-nocookie.com/embed/')) {
-      // Already a nocookie embed URL
-      embedUrl = url;
-    } else if (url.includes('vimeo.com/')) {
-      const videoId = url.split('vimeo.com/')[1].split('?')[0];
-      embedUrl = `https://player.vimeo.com/video/${videoId}`;
-    } else {
-      embedUrl = url;
-    }
-
-    return this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl);
-  }
-
   trackBySectionOrder(index: number, section: LearningArticleContentSection): number {
     return section.order;
-  }
-
-  trackByContentItemOrder(index: number, item: LearningArticleContentItem): number {
-    return item.order;
-  }
-
-  getPartName(sectionTitle?: string, order?: number): string {
-    if (sectionTitle) {
-      const sanitizedTitle = sectionTitle.replace(/[^a-zа-яё0-9]/gi, '_').toLowerCase();
-      if (order !== undefined && order !== null) {
-        return `${sanitizedTitle}_${order}`;
-      } else {
-        return sanitizedTitle;
-      }
-    } else {
-      if (order !== undefined && order !== null) {
-        return `music_score_${order}`;
-      } else {
-        return 'music_score';
-      }
-    }
   }
 
   private updateArticleCompletionStatus(articleId: string, isCompleted: boolean): void {

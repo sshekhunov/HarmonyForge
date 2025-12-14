@@ -12,13 +12,18 @@ export interface UpdateLearningItemStatusRequest {
 
 export interface GetLearningItemStatusesRequest {
   userId: string;
-  learningItemIds: string[];
+  items: LearningItemStatusRequestItem[];
+}
+
+export interface LearningItemStatusRequestItem {
+  learningItemId: string;
   learningItemType: 'Article' | 'Excercise' | 'Test';
 }
 
 export interface LearningItemStatusDto {
   learningItemId: string;
   isCompleted: boolean;
+  score?: number;
 }
 
 @Injectable({
