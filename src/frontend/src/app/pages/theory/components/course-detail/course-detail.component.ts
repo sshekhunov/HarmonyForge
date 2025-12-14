@@ -76,7 +76,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
       });
     } else {
       this.initializeModuleProgress();
-      this.selectFirstModule();
+      this.selectDefaultModule();
     }
   }
 
@@ -87,12 +87,17 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         const previousCourse = changes['course'].previousValue;
         if (!previousCourse || previousCourse.id !== this.course.id) {
           this.selectedModuleId = null;
-          this.selectFirstModule();
+          const savedModuleId = this.getSavedModuleId(this.course.id);
+          if (savedModuleId && this.course.modules.some(m => m.id === savedModuleId)) {
+            this.selectedModuleId = savedModuleId;
+          } else {
+            this.selectDefaultModule();
+          }
           if (this.isAuthenticated) {
             this.loadItemStatuses();
           }
         } else if (!this.selectedModuleId) {
-          this.selectFirstModule();
+          this.selectDefaultModule();
         }
       }
       if (changes['itemsByModule']) {
@@ -116,7 +121,13 @@ export class CourseDetailComponent implements OnInit, OnChanges {
       next: (course) => {
         this.course = course;
         this.initializeModuleProgress();
-        this.selectFirstModule();
+        // Try to restore saved module ID before selecting
+        const savedModuleId = this.getSavedModuleId(course.id);
+        if (savedModuleId && course.modules.some(m => m.id === savedModuleId)) {
+          this.selectedModuleId = savedModuleId;
+        } else {
+          this.selectDefaultModule();
+        }
         this.loadItemsForCourse(course);
       },
       error: (error) => {
@@ -199,9 +210,35 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     this.moduleProgress.set(moduleId, progress);
   }
 
-  private selectFirstModule(): void {
+  private selectDefaultModule(): void {
     if (this.course?.modules && this.course.modules.length > 0 && !this.selectedModuleId) {
-      this.selectedModuleId = this.course.modules[0].id;
+      const savedModuleId = this.getSavedModuleId(this.course.id);
+
+      if (savedModuleId && this.course.modules.some(m => m.id === savedModuleId)) {
+        this.selectedModuleId = savedModuleId;
+      } else {
+        this.selectedModuleId = this.course.modules[0].id;
+        this.saveModuleId(this.course.id, this.selectedModuleId);
+      }
+    }
+  }
+
+  private getSavedModuleId(courseId: string): string | null {
+    try {
+      const key = `selectedModule_${courseId}`;
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.warn('Error reading from localStorage:', error);
+      return null;
+    }
+  }
+
+  private saveModuleId(courseId: string, moduleId: string): void {
+    try {
+      const key = `selectedModule_${courseId}`;
+      localStorage.setItem(key, moduleId);
+    } catch (error) {
+      console.warn('Error saving to localStorage:', error);
     }
   }
 
@@ -266,6 +303,10 @@ export class CourseDetailComponent implements OnInit, OnChanges {
 
   onModuleSelected(moduleId: string) {
     this.selectedModuleId = moduleId;
+    // Save selected module to localStorage
+    if (this.course) {
+      this.saveModuleId(this.course.id, moduleId);
+    }
   }
 
   isModuleSelected(moduleId: string): boolean {
