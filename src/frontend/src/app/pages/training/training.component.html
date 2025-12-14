@@ -3,14 +3,16 @@
   <p-splitter [style]="{'height': '100%', 'width': '100%'}" [panelSizes]="[50, 50]" styleClass="training-splitter">
     <ng-template pTemplate>
       <div class="splitter-panel panel-content">
-        <div class="panel-header">
-          <h2 class="panel-title">Задание</h2>
-        </div>
-        <div class="panel-body">
-          <app-learning-content-renderer
-            [contentItems]="mockContentItems"
-            [sectionTitle]="'Инструкция'">
-          </app-learning-content-renderer>
+        <div class="panel-card">
+          <div class="panel-header">
+            <h2 class="panel-title">Задание</h2>
+          </div>
+          <div class="panel-body">
+            <app-learning-content-renderer
+              [contentItems]="mockContentItems"
+              [sectionTitle]="'Инструкция'">
+            </app-learning-content-renderer>
+          </div>
         </div>
       </div>
     </ng-template>
@@ -19,83 +21,87 @@
       <p-splitter layout="vertical" [panelSizes]="[50, 50]" styleClass="training-splitter-nested">
         <ng-template pTemplate>
           <div class="splitter-panel panel-upload">
-            <div class="panel-header">
-              <h2 class="panel-title">Загрузка файла</h2>
-            </div>
-            <div class="panel-body">
-              <div class="upload-card">
-                <p-fileupload name="musicScores[]"
-                    chooseLabel="Загрузить" uploadLabel="Проверить" cancelLabel="Отменить"
-                    chooseIcon="pi pi-upload"
-                    uploadIcon="pi pi-sparkles"
-                    [multiple]="false"
-                    maxFileSize="1000000"
-                    [customUpload]="true"
-                    (uploadHandler)="onUpload($event)"
-                    (onSelect)="onSelectedFiles($event)"
-                    (onClear)="onClear()">
-
-                    <ng-template #empty>
-                        <div class="flex items-center justify-center flex-col upload-empty">
-                            <i class="pi pi-cloud-upload upload-icon"></i>
-                            <p class="mt-6 mb-0">Перетащите файл в формате MusicXml</p>
-                        </div>
-                    </ng-template>
-                    <ng-template #content>
-
-                    </ng-template>
-                </p-fileupload>
+            <div class="panel-card">
+              <div class="panel-header">
+                <h2 class="panel-title">Загрузка файла</h2>
               </div>
+              <div class="panel-body">
+                <div class="upload-card">
+                  <p-fileupload name="musicScores[]"
+                      chooseLabel="Загрузить" uploadLabel="Проверить" cancelLabel="Отменить"
+                      chooseIcon="pi pi-upload"
+                      uploadIcon="pi pi-sparkles"
+                      [multiple]="false"
+                      maxFileSize="1000000"
+                      [customUpload]="true"
+                      (uploadHandler)="onUpload($event)"
+                      (onSelect)="onSelectedFiles($event)"
+                      (onClear)="onClear()">
 
-              @if (musicXml != '')
-              {
-              <div class="uploaded-preview">
-                <h3 class="preview-title">Предпросмотр загруженного файла:</h3>
-                <lib-osmd-renderer [source]="musicXml"></lib-osmd-renderer>
-              </div>
-              }
+                      <ng-template #empty>
+                          <div class="flex items-center justify-center flex-col upload-empty">
+                              <i class="pi pi-cloud-upload upload-icon"></i>
+                              <p class="mt-6 mb-0">Перетащите файл в формате MusicXml</p>
+                          </div>
+                      </ng-template>
+                      <ng-template #content>
 
-              @if (isLoading)
-              {
-              <div class="loading-indicator">
-                  <i class="pi pi-spin pi-spinner text-2xl mr-2"></i>
-                  <span>Анализ гармонии...</span>
+                      </ng-template>
+                  </p-fileupload>
+                </div>
+
+                @if (musicXml != '')
+                {
+                <div class="uploaded-preview">
+                  <h3 class="preview-title">Предпросмотр загруженного файла:</h3>
+                  <lib-osmd-renderer [source]="musicXml"></lib-osmd-renderer>
+                </div>
+                }
+
+                @if (isLoading)
+                {
+                <div class="loading-indicator">
+                    <i class="pi pi-spin pi-spinner text-2xl mr-2"></i>
+                    <span>Анализ гармонии...</span>
+                </div>
+                }
               </div>
-              }
             </div>
           </div>
         </ng-template>
 
         <ng-template pTemplate>
           <div class="splitter-panel panel-results">
-            <div class="panel-header">
-              <h2 class="panel-title">Результаты анализа</h2>
-            </div>
-            <div class="panel-body">
-              @if (checkResult != '')
-              {
-              <div class="result-content">
-                  <h3 class="result-title">Результат анализа</h3>
-                  <p class="result-text">{{ checkResult }}</p>
+            <div class="panel-card">
+              <div class="panel-header">
+                <h2 class="panel-title">Результаты анализа</h2>
+              </div>
+              <div class="panel-body">
+                @if (checkResult != '')
+                {
+                <div class="result-content">
+                    <h3 class="result-title">Результат анализа</h3>
+                    <p class="result-text">{{ checkResult }}</p>
 
-                  @if (noteCount > 0)
-                  {
-                  <div class="result-success">
-                      <div class="flex items-center">
-                          <i class="pi pi-check-circle text-green-600 mr-2"></i>
-                          <span class="text-green-800 font-medium">Найдено нот: {{ noteCount }}</span>
-                      </div>
-                  </div>
-                  }
+                    @if (noteCount > 0)
+                    {
+                    <div class="result-success">
+                        <div class="flex items-center">
+                            <i class="pi pi-check-circle text-green-600 mr-2"></i>
+                            <span class="text-green-800 font-medium">Найдено нот: {{ noteCount }}</span>
+                        </div>
+                    </div>
+                    }
+                </div>
+                }
+                @else
+                {
+                <div class="result-empty">
+                    <i class="pi pi-info-circle result-empty-icon"></i>
+                    <p>Результаты анализа будут отображены здесь после проверки файла</p>
+                </div>
+                }
               </div>
-              }
-              @else
-              {
-              <div class="result-empty">
-                  <i class="pi pi-info-circle result-empty-icon"></i>
-                  <p>Результаты анализа будут отображены здесь после проверки файла</p>
-              </div>
-              }
             </div>
           </div>
         </ng-template>

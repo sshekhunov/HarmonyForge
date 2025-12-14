@@ -55,12 +55,22 @@
     flex-direction: column;
     background: var(--surface-ground);
     overflow: hidden;
+    padding: 1.5rem;
+
+    .panel-card {
+        background: var(--surface-card);
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+    }
 
     .panel-header {
-        padding: 1rem 1.5rem;
-        background: var(--surface-card);
-        border-bottom: 1px solid var(--surface-border);
+        padding: 1.5rem 1.5rem 1rem 1.5rem;
         flex-shrink: 0;
+        border-bottom: 1px solid var(--surface-border);
 
         .panel-title {
             font-size: 1.25rem;
@@ -79,21 +89,15 @@
 
 .panel-content {
     .panel-body {
-        background: var(--surface-ground);
-        padding: 0;
-        display: flex;
-        flex-direction: column;
+        padding: 1.5rem;
+        overflow-y: auto;
+        width: 100%;
+        max-width: none;
+    }
 
-        > * {
-            background: var(--surface-card);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            flex: 1;
-            margin: 1.5rem;
-            min-height: 0;
-            overflow-y: auto;
-        }
+    .panel-card {
+        max-width: none;
+        width: 100%;
     }
 }
 
@@ -103,26 +107,13 @@
         flex-direction: column;
         gap: 1rem;
         padding: 1.5rem;
-
-        > * {
-            background: var(--surface-card);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            flex: 1;
-            min-height: 0;
-            overflow-y: auto;
-        }
+        overflow-y: auto;
     }
 
     .upload-card {
-        padding: 0;
-        margin: 0;
-        background: transparent;
-        box-shadow: none;
         display: flex;
         flex-direction: column;
-        height: 100%;
+        flex: 1;
         min-height: 0;
     }
 
@@ -161,18 +152,8 @@
     .panel-body {
         display: flex;
         flex-direction: column;
-        gap: 1rem;
         padding: 1.5rem;
-
-        > * {
-            background: var(--surface-card);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            flex: 1;
-            min-height: 0;
-            overflow-y: auto;
-        }
+        overflow-y: auto;
     }
 
     .result-content {
@@ -224,6 +205,13 @@
 
 // Global PrimeNG component styling
 :host ::ng-deep {
+    .panel-content {
+        .section-content {
+            max-width: none !important;
+            width: 100% !important;
+        }
+    }
+
     .training-splitter {
         height: 100% !important;
         width: 100% !important;
