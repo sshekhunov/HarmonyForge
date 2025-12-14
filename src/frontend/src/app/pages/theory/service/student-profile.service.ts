@@ -19,6 +19,7 @@ export interface GetLearningItemStatusesRequest {
 export interface LearningItemStatusDto {
   learningItemId: string;
   isCompleted: boolean;
+  score?: number;
 }
 
 @Injectable({

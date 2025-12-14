@@ -11,8 +11,10 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { CheckboxModule } from 'primeng/checkbox';
 import { LearningCourse, LearningModule } from '../../models/learning-course.model';
 import { LearningArticle, LearningArticleWithModule } from '../../models/learning-article.model';
+import { LearningExercise, LearningExerciseWithModule } from '../../models/learning-exercise.model';
 import { LearningCourseService } from '../../service/learning-course.service';
 import { LearningArticleService } from '../../service/learning-article.service';
+import { LearningExerciseService } from '../../service/learning-exercise.service';
 import { StudentProfileService } from '../../service/student-profile.service';
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
 
@@ -26,6 +28,7 @@ import { AuthStateService } from '../../../../shared/services/auth-state.service
 export class CourseDetailComponent implements OnInit, OnChanges {
   @Input() course: LearningCourse | null = null;
   @Input() articlesByModule: { [moduleId: string]: LearningArticleWithModule[] } = {};
+  @Input() exercisesByModule: { [moduleId: string]: LearningExerciseWithModule[] } = {};
   @Input() loading = false;
   @Input() error: string | null = null;
   @Input() expandedModules: Set<string> = new Set();
@@ -38,6 +41,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
   selectedModuleId: string | null = null;
   moduleProgress: Map<string, number> = new Map();
   articleCompletionStatus: Map<string, boolean> = new Map();
+  exerciseScores: Map<string, number> = new Map(); // Map<exerciseId, scorePercentage>
   isAuthenticated = false;
   private loadFromRoute = false;
 
@@ -46,6 +50,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     @Optional() private router: Router,
     @Optional() private learningCourseService: LearningCourseService,
     @Optional() private learningArticleService: LearningArticleService,
+    @Optional() private learningExerciseService: LearningExerciseService,
     @Optional() private studentProfileService: StudentProfileService,
     @Optional() private authStateService: AuthStateService
   ) {
@@ -56,8 +61,10 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         this.isAuthenticated = isAuth;
         if (isAuth && this.course) {
           this.loadArticleCompletionStatuses();
+          this.loadExerciseScores();
         } else {
           this.articleCompletionStatus.clear();
+          this.exerciseScores.clear();
           this.initializeModuleProgress();
         }
       });
@@ -89,6 +96,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
           this.selectFirstModule();
           if (this.isAuthenticated) {
             this.loadArticleCompletionStatuses();
+            this.loadExerciseScores();
           }
         } else if (!this.selectedModuleId) {
           this.selectFirstModule();
@@ -98,6 +106,12 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         this.initializeModuleProgress();
         if (this.isAuthenticated) {
           this.loadArticleCompletionStatuses();
+          this.loadExerciseScores();
+        }
+      }
+      if (changes['exercisesByModule']) {
+        if (this.isAuthenticated) {
+          this.loadExerciseScores();
         }
       }
     }
@@ -117,6 +131,7 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         this.initializeModuleProgress();
         this.selectFirstModule();
         this.loadArticlesForCourse(course);
+        this.loadExercisesForCourse(course);
       },
       error: (error) => {
         this.error = 'Курс не найден.';
@@ -165,11 +180,55 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         this.loading = false;
         if (this.isAuthenticated) {
           this.loadArticleCompletionStatuses();
+          this.loadExerciseScores();
         }
       },
       error: (error) => {
         console.error('Error loading articles:', error);
         this.loading = false;
+      }
+    });
+  }
+
+  private loadExercisesForCourse(course: LearningCourse): void {
+    if (!this.learningExerciseService) {
+      return;
+    }
+
+    this.exercisesByModule = {};
+
+    const exerciseObservables = course.modules.map(module =>
+      this.learningExerciseService!.getExercisesByModuleId(module.id).pipe(
+        map(exercises => ({
+          moduleId: module.id,
+          exercises: exercises.map(exercise => ({
+            exercise,
+            moduleTitle: module.title || '',
+            moduleDescription: module.description || ''
+          }))
+        })),
+        catchError(error => {
+          console.error(`Error loading exercises for module ${module.id}:`, error);
+          return of({ moduleId: module.id, exercises: [] });
+        })
+      )
+    );
+
+    if (exerciseObservables.length === 0) {
+      return;
+    }
+
+    forkJoin(exerciseObservables).subscribe({
+      next: (results) => {
+        results.forEach(result => {
+          this.exercisesByModule[result.moduleId] = result.exercises;
+        });
+        if (this.isAuthenticated) {
+          this.loadExerciseScores();
+        }
+      },
+      error: (error) => {
+        console.error('Error loading exercises:', error);
       }
     });
   }
@@ -253,6 +312,13 @@ export class CourseDetailComponent implements OnInit, OnChanges {
     return this.articlesByModule[this.selectedModuleId] || [];
   }
 
+  getSelectedModuleExercises(): LearningExerciseWithModule[] {
+    if (!this.selectedModuleId) {
+      return [];
+    }
+    return this.exercisesByModule[this.selectedModuleId] || [];
+  }
+
   getSelectedModule(): LearningModule | null {
     if (!this.selectedModuleId || !this.course) {
       return null;
@@ -308,6 +374,27 @@ export class CourseDetailComponent implements OnInit, OnChanges {
 
   trackByArticleId(index: number, articleWithModule: LearningArticleWithModule): string {
     return articleWithModule.article.id;
+  }
+
+  trackByExerciseId(index: number, exerciseWithModule: LearningExerciseWithModule): string {
+    return exerciseWithModule.exercise.id;
+  }
+
+  getExerciseTitle(exercise: LearningExercise): string {
+    return exercise.title || 'Упражнение';
+  }
+
+  getExerciseDescription(exercise: LearningExercise): string {
+    return exercise.description || 'Описание упражнения недоступно';
+  }
+
+  getExerciseScore(exerciseId: string): number {
+    return this.exerciseScores.get(exerciseId) || 0;
+  }
+
+  isExerciseCompleted(exerciseId: string): boolean {
+    const score = this.exerciseScores.get(exerciseId);
+    return score !== undefined && score > 0;
   }
 
   private loadArticleCompletionStatuses(): void {
@@ -402,5 +489,45 @@ export class CourseDetailComponent implements OnInit, OnChanges {
         this.calculateModuleProgress(module.id);
       });
     }
+  }
+
+  private loadExerciseScores(): void {
+    if (!this.studentProfileService || !this.authStateService) {
+      return;
+    }
+
+    const user = this.authStateService.getUser();
+    if (!user || !user.userId) {
+      return;
+    }
+
+    const allExerciseIds: string[] = [];
+    Object.values(this.exercisesByModule).forEach(exercises => {
+      exercises.forEach(exerciseWithModule => {
+        allExerciseIds.push(exerciseWithModule.exercise.id);
+      });
+    });
+
+    if (allExerciseIds.length === 0) {
+      return;
+    }
+
+    this.studentProfileService.getLearningItemStatuses({
+      userId: user.userId,
+      learningItemIds: allExerciseIds,
+      learningItemType: 'Excercise'
+    }).subscribe({
+      next: (statuses: any) => {
+        statuses.forEach((status: any) => {
+          // Convert score to percentage (assuming score is 0-1 or 0-100)
+          const score = status.score ?? 0;
+          const scorePercentage = score <= 1 ? Math.round(score * 100) : Math.round(score);
+          this.exerciseScores.set(status.learningItemId, scorePercentage);
+        });
+      },
+      error: (error: any) => {
+        console.error('Error loading exercise scores:', error);
+      }
+    });
   }
 }

@@ -100,9 +100,33 @@
             </div>
           </div>
 
-          <div *ngIf="getSelectedModuleArticles().length === 0" class="no-articles">
+          <div *ngFor="let exerciseWithModule of getSelectedModuleExercises(); trackBy: trackByExerciseId"
+               class="article-item exercise-item">
+            <div class="article-main-content">
+              <div class="article-icon">
+                <i class="pi pi-cog"></i>
+              </div>
+              <div class="article-content">
+                <h4 class="article-title">{{ getExerciseTitle(exerciseWithModule.exercise) }}</h4>
+                <p class="article-description" *ngIf="getExerciseDescription(exerciseWithModule.exercise)">
+                  {{ getExerciseDescription(exerciseWithModule.exercise) }}
+                </p>
+              </div>
+            </div>
+            <div class="exercise-checkbox-container" *ngIf="isAuthenticated" (click)="$event.stopPropagation()">
+              <span class="exercise-score">{{ getExerciseScore(exerciseWithModule.exercise.id) }}%</span>
+              <p-checkbox
+                [binary]="true"
+                [ngModel]="isExerciseCompleted(exerciseWithModule.exercise.id)"
+                [readonly]="true"
+                [inputId]="'checkbox-exercise-' + exerciseWithModule.exercise.id">
+              </p-checkbox>
+            </div>
+          </div>
+
+          <div *ngIf="getSelectedModuleArticles().length === 0 && getSelectedModuleExercises().length === 0" class="no-articles">
             <i class="pi pi-file-o no-articles-icon"></i>
-            <p>Статьи для этого модуля пока недоступны.</p>
+            <p>Статьи и упражнения для этого модуля пока недоступны.</p>
           </div>
         </div>
       </div>
