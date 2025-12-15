@@ -1,4 +1,6 @@
-﻿namespace HF.LearningCourseService.Core.Domain.Entities;
+﻿using System.Drawing;
+
+namespace HF.LearningCourseService.Core.Domain.Entities;
 
 public class LearningCourse: BaseEntity
 {
@@ -9,6 +11,9 @@ public class LearningCourse: BaseEntity
     public string Description { get; set; } = string.Empty;
     public string? CourseCardImage {  get; set; }
     public string? TopBannerImage {  get; set; } 
+    public Color? CourseDesignColor { get; set; }
+
+    public Guid? CategoryId { get; set; }
 
     public IEnumerable<LearningModule> Modules => _modules;
 

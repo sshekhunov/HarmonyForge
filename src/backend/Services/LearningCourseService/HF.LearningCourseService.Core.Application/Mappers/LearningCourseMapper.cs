@@ -13,6 +13,7 @@ public static class LearningCourseMapper
             Code = entity.Code,
             Title = entity.Title,
             Description = entity.Description,
+            CategoryId = entity.CategoryId,
             Modules = entity.Modules.Select(LearningModuleMapper.ToDto).ToList()
         };
     }
@@ -29,7 +30,8 @@ public static class LearningCourseMapper
             Id = Guid.NewGuid(),
             Code = dto.Code,
             Title = dto.Title,
-            Description = dto.Description
+            Description = dto.Description,
+            CategoryId = dto.CategoryId
         };
         
         course.AddModules(dto.Modules.Select(LearningModuleMapper.ToEntity).ToList());

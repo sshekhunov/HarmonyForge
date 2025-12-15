@@ -14,12 +14,14 @@ namespace HF.LearningCourseService.Infrastructure.DataAccess
 	public DbSet<LearningCourse> LearningCourses => Set<LearningCourse>();
 	public DbSet<LearningArticle> LearningArticles => Set<LearningArticle>();
 	public DbSet<LearningExcercise> LearningExercises => Set<LearningExcercise>();
+	public DbSet<LearningCourseCategory> LearningCourseCategories => Set<LearningCourseCategory>();
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 		modelBuilder.Entity<LearningCourse>().ToCollection("learning_courses");
 		modelBuilder.Entity<LearningArticle>().ToCollection("learning_articles");
 		modelBuilder.Entity<LearningExcercise>().ToCollection("learning_exercises");
+		modelBuilder.Entity<LearningCourseCategory>().ToCollection("learning_course_categories");
             
             // Configure relationships
             modelBuilder.Entity<LearningArticle>()

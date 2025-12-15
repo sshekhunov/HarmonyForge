@@ -23,6 +23,11 @@ namespace HF.LearningCourseService.Infrastructure.DataAccess.Repositories
 			return await _dbContext.LearningCourses.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 		}
 
+		public async Task<LearningCourse?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken = default)
+		{
+			return await _dbContext.LearningCourses.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+		}
+
 		public async Task AddAsync(LearningCourse course, CancellationToken cancellationToken = default)
 		{
 			await _dbContext.LearningCourses.AddAsync(course, cancellationToken);

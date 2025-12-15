@@ -16,5 +16,7 @@ public class CreateCourseDto
 	[StringLength(1000, MinimumLength = 1, ErrorMessage = "Description must be between 1 and 1000 characters")]
 	public string Description { get; set; } = string.Empty;
 	
+	public Guid? CategoryId { get; set; }
+	
 	public ICollection<LearningModuleDto> Modules { get; set; } = [];
 }

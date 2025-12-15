@@ -56,6 +56,9 @@ namespace HF.LearningCourseService.Host.Api
             builder.Services.AddScoped<ILearningExerciseService, Core.Application.Services.LearningExerciseService>();
             
             builder.Services.AddScoped<ILearningItemService, Core.Application.Services.LearningItemService>();
+            
+            builder.Services.AddScoped<ILearningCourseCategoryRepository, LearningCourseCategoryRepository>();
+            builder.Services.AddScoped<ILearningCourseCategoryService, Core.Application.Services.LearningCourseCategoryService>();
 
             var app = builder.Build();
 
