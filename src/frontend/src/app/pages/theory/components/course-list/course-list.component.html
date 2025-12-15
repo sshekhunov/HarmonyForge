@@ -38,6 +38,23 @@
 <!-- Courses Section -->
 <div *ngIf="!loading && !error && courses.length > 0" class="courses-section">
   
+  <!-- Continue Learning Section -->
+  <div *ngIf="isAuthenticated && continueLearningCourses.length > 0" class="category-section continue-learning-section">
+    <div class="category-header">
+      <h2 class="category-title">Продолжить обучение</h2>
+    </div>
+    
+    <div class="courses-grid">
+      <app-course-card
+        *ngFor="let course of continueLearningCourses; trackBy: trackByCourseId"
+        [course]="course"
+        [itemCount]="getCourseProgress(course.id).totalItems"
+        [completionPercentage]="getCourseProgress(course.id).completionPercentage"
+        (courseSelected)="onCourseSelected($event)">
+      </app-course-card>
+    </div>
+  </div>
+
   <!-- Category Sections -->
   <div *ngFor="let categoryWithCourses of categoriesWithCourses; trackBy: trackByCategoryId" class="category-section">
     <div class="category-header">

@@ -47,6 +47,7 @@ export class CourseListComponent implements OnInit, OnChanges {
   categoriesWithCourses: CategoryWithCourses[] = [];
   uncategorizedCourses: LearningCourse[] = [];
   categoriesLoading = false;
+  continueLearningCourses: LearningCourse[] = [];
 
   constructor(
     @Optional() private learningItemService: LearningItemService,
@@ -64,7 +65,10 @@ export class CourseListComponent implements OnInit, OnChanges {
             this.loadCourseProgress();
           } else {
             this.loadCourseItemCounts();
+            this.continueLearningCourses = [];
           }
+        } else {
+          this.continueLearningCourses = [];
         }
       });
     }
@@ -88,8 +92,11 @@ export class CourseListComponent implements OnInit, OnChanges {
         this.loadCourseProgress();
       } else {
         this.loadCourseItemCounts();
+        this.continueLearningCourses = [];
       }
       this.groupCoursesByCategory();
+    } else if (changes['courses'] && this.courses.length === 0) {
+      this.continueLearningCourses = [];
     }
   }
 
@@ -187,6 +194,8 @@ export class CourseListComponent implements OnInit, OnChanges {
               completedItems: completedCount,
               completionPercentage: completionPercentage
             });
+
+            this.updateContinueLearningCourses();
           },
           error: (error) => {
             console.error('Error loading completion statuses:', error);
@@ -297,19 +306,16 @@ export class CourseListComponent implements OnInit, OnChanges {
     this.categoriesWithCourses = [];
     this.uncategorizedCourses = [];
 
-    // If categories haven't loaded yet, put all courses in uncategorized
     if (this.categories.length === 0) {
       this.uncategorizedCourses = [...this.courses];
       return;
     }
 
-    // Create a map of category ID to category
     const categoryMap = new Map<string, LearningCourseCategory>();
     this.categories.forEach(cat => {
       categoryMap.set(cat.id, cat);
     });
 
-    // Group courses by category
     const categoryCoursesMap = new Map<string, LearningCourse[]>();
     
     this.courses.forEach(course => {
@@ -323,7 +329,6 @@ export class CourseListComponent implements OnInit, OnChanges {
       }
     });
 
-    // Build categoriesWithCourses array
     this.categories.forEach(category => {
       const courses = categoryCoursesMap.get(category.id) || [];
       if (courses.length > 0) {
@@ -334,7 +339,6 @@ export class CourseListComponent implements OnInit, OnChanges {
       }
     });
 
-    // Sort categories by name
     this.categoriesWithCourses.sort((a, b) => 
       a.category.name.localeCompare(b.category.name)
     );
@@ -342,5 +346,38 @@ export class CourseListComponent implements OnInit, OnChanges {
 
   trackByCategoryId(index: number, item: CategoryWithCourses): string {
     return item.category.id;
+  }
+
+  private updateContinueLearningCourses(): void {
+    if (!this.isAuthenticated || this.courses.length === 0) {
+      this.continueLearningCourses = [];
+      return;
+    }
+
+    const incompleteCoursesWithActivity = this.courses
+      .map(course => {
+        const progress = this.courseProgress.get(course.id);
+        return {
+          course,
+          progress: progress || {
+            totalItems: 0,
+            completedItems: 0,
+            completionPercentage: 0
+          }
+        };
+      })
+      .filter(item => 
+        item.progress.completedItems > 0 && 
+        item.progress.completionPercentage < 100
+      );
+
+    incompleteCoursesWithActivity.sort((a, b) => {
+      if (b.progress.completionPercentage !== a.progress.completionPercentage) {
+        return b.progress.completionPercentage - a.progress.completionPercentage;
+      }
+      return b.progress.completedItems - a.progress.completedItems;
+    });
+
+    this.continueLearningCourses = incompleteCoursesWithActivity.map(item => item.course);
   }
 }
