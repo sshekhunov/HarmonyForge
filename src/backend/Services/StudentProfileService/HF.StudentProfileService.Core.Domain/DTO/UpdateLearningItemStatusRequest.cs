@@ -8,5 +8,6 @@ public class UpdateLearningItemStatusRequest
     public Guid LearningItemId { get; set; }
     public LearningItemType LearningItemType { get; set; }
     public bool IsCompleted { get; set; }
+    public double? Score { get; set; }
 }
 
