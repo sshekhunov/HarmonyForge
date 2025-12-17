@@ -44,7 +44,106 @@ public class MusicXmlParser : IMusicXmlParser
             }
         }
 
+        // Extract note positions
+        score.NotePositions = ExtractNotePositions(xmlDoc);
+
         return score;
+    }
+
+    private List<MusicXmlNotePosition> ExtractNotePositions(XmlDocument xmlDoc)
+    {
+        var notePositions = new List<MusicXmlNotePosition>();
+        
+        try
+        {
+            // Get all parts
+            var parts = xmlDoc.SelectNodes("//part");
+            if (parts == null || parts.Count == 0)
+            {
+                return notePositions;
+            }
+
+            // Iterate through parts (measureArrayIndex)
+            for (int partIndex = 0; partIndex < parts.Count; partIndex++)
+            {
+                var part = parts[partIndex];
+                var measures = part.SelectNodes("measure");
+
+                if (measures == null)
+                    continue;
+
+                // Iterate through measures (measureIndex)
+                for (int measureIndex = 0; measureIndex < measures.Count; measureIndex++)
+                {
+                    var measure = measures[measureIndex];
+                    
+                    // Get all notes in this measure (excluding rests)
+                    var noteNodes = measure.SelectNodes(".//note[not(rest)]");
+                    
+                    if (noteNodes == null || noteNodes.Count == 0)
+                        continue;
+
+                    int staffEntryIndex = 0;
+                    int voiceEntryIndex = 0;
+                    int noteIndex = 0;
+                    bool isFirstNoteInMeasure = true;
+
+                    foreach (XmlNode noteNode in noteNodes)
+                    {
+                        // Check if this note is part of a chord (same staff entry and voice)
+                        var chordNode = noteNode.SelectSingleNode("chord");
+                        bool isChord = chordNode != null;
+
+                        // Check voice (if specified)
+                        var voiceNode = noteNode.SelectSingleNode("voice");
+                        int currentVoice = 0;
+                        if (voiceNode != null && int.TryParse(voiceNode.InnerText, out int parsedVoice))
+                        {
+                            currentVoice = parsedVoice;
+                        }
+
+                        if (isFirstNoteInMeasure)
+                        {
+                            // First note in the measure
+                            staffEntryIndex = 0;
+                            voiceEntryIndex = currentVoice;
+                            noteIndex = 0;
+                            isFirstNoteInMeasure = false;
+                        }
+                        else if (isChord)
+                        {
+                            // Same staff entry, same voice, different note in chord
+                            noteIndex++;
+                        }
+                        else
+                        {
+                            // New staff entry (new time position)
+                            staffEntryIndex++;
+                            voiceEntryIndex = currentVoice;
+                            noteIndex = 0;
+                        }
+
+                        // Create note position
+                        notePositions.Add(new MusicXmlNotePosition
+                        {
+                            MeasureArrayIndex = partIndex,
+                            MeasureIndex = measureIndex,
+                            StaffEntryIndex = staffEntryIndex,
+                            VoiceEntryIndex = voiceEntryIndex,
+                            NoteIndex = noteIndex
+                        });
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // If parsing fails, return empty list
+            // The service will still work but won't have note positions
+            Console.WriteLine($"Error extracting note positions: {ex.Message}");
+        }
+
+        return notePositions;
     }
 
     private Note? ParseNote(XmlNode noteNode)

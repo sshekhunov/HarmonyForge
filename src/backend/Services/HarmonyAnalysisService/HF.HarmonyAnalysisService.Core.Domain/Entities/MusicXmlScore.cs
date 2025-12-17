@@ -6,4 +6,5 @@ public class MusicXmlScore
     public string Composer { get; set; } = string.Empty;
     public List<Note> Notes { get; set; } = new();
     public int PartCount { get; set; }
+    public List<MusicXmlNotePosition> NotePositions { get; set; } = new();
 }
