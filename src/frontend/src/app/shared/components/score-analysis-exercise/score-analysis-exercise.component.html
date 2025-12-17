@@ -66,7 +66,10 @@
                 @else
                 {
                 <div class="uploaded-preview">
-                  <lib-osmd-renderer [source]="musicXml"></lib-osmd-renderer>
+                  <lib-osmd-renderer
+                    [source]="musicXml"
+                    [showTitleAndAuthor]="false">
+                  </lib-osmd-renderer>
                 </div>
                 }
                 <input
