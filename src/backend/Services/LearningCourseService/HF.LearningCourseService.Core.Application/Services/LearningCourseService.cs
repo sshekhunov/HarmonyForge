@@ -9,10 +9,12 @@ namespace HF.LearningCourseService.Core.Application.Services;
 public class LearningCourseService: ILearningCourseService
 {
     private readonly ILearningCourseRepository _repository;
+    private readonly ILearningCourseCategoryRepository _categoryRepository;
 
-    public LearningCourseService(ILearningCourseRepository repository)
+    public LearningCourseService(ILearningCourseRepository repository, ILearningCourseCategoryRepository categoryRepository)
     {
         _repository = repository;
+        _categoryRepository = categoryRepository;
     }
 
     public async Task<IList<LearningCourseDto>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -29,14 +31,14 @@ public class LearningCourseService: ILearningCourseService
 
     public async Task<Guid> AddAsync(CreateCourseDto request, CancellationToken cancellationToken = default)
     {
-        var course = LearningCourseMapper.ToEntity(request);
+        var course = LearningCourseMapper.ToEntity(request);        
         await _repository.AddAsync(course, cancellationToken);
         return course.Id;
     }
 
     public async Task UpdateAsync(UpdateCourseDto request, CancellationToken cancellationToken = default)
     {
-        var course = await _repository.GetByIdAsync(request.Id, cancellationToken);
+        var course = await _repository.GetByIdForUpdateAsync(request.Id, cancellationToken);
         if (course is null)
         {
             throw new InvalidOperationException($"Learning course with ID {request.Id} not found");
@@ -45,6 +47,8 @@ public class LearningCourseService: ILearningCourseService
         course.Code = request.Code;
         course.Title = request.Title;
         course.Description = request.Description;
+        course.CategoryId = request.CategoryId;
+
         course.ClearModules();
         course.AddModules(request.Modules.Select(LearningModuleMapper.ToEntity).ToList());
 

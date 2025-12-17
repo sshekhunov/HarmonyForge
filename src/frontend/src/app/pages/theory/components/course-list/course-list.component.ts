@@ -7,16 +7,23 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { LearningCourse, LearningModule } from '../../models/learning-course.model';
+import { LearningCourseCategory } from '../../models/learning-course-category.model';
 import { CourseCardComponent } from '../course-card/course-card.component';
 import { LearningItemService } from '../../service/learning-item.service';
 import { LearningItemType } from '../../models/learning-item.model';
 import { StudentProfileService } from '../../service/student-profile.service';
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
+import { LearningCourseCategoryService } from '../../service/learning-course-category.service';
 
 interface CourseProgress {
   totalItems: number;
   completedItems: number;
   completionPercentage: number;
+}
+
+interface CategoryWithCourses {
+  category: LearningCourseCategory;
+  courses: LearningCourse[];
 }
 
 @Component({
@@ -36,11 +43,17 @@ export class CourseListComponent implements OnInit, OnChanges {
 
   courseProgress: Map<string, CourseProgress> = new Map();
   isAuthenticated = false;
+  categories: LearningCourseCategory[] = [];
+  categoriesWithCourses: CategoryWithCourses[] = [];
+  uncategorizedCourses: LearningCourse[] = [];
+  categoriesLoading = false;
+  continueLearningCourses: LearningCourse[] = [];
 
   constructor(
     @Optional() private learningItemService: LearningItemService,
     @Optional() private studentProfileService: StudentProfileService,
-    @Optional() private authStateService: AuthStateService
+    @Optional() private authStateService: AuthStateService,
+    @Optional() private categoryService: LearningCourseCategoryService
   ) {
     if (this.authStateService) {
       this.isAuthenticated = this.authStateService.getIsAuthenticated();
@@ -52,19 +65,24 @@ export class CourseListComponent implements OnInit, OnChanges {
             this.loadCourseProgress();
           } else {
             this.loadCourseItemCounts();
+            this.continueLearningCourses = [];
           }
+        } else {
+          this.continueLearningCourses = [];
         }
       });
     }
   }
 
   ngOnInit(): void {
+    this.loadCategories();
     if (this.courses.length > 0) {
       if (this.isAuthenticated) {
         this.loadCourseProgress();
       } else {
         this.loadCourseItemCounts();
       }
+      this.groupCoursesByCategory();
     }
   }
 
@@ -74,7 +92,11 @@ export class CourseListComponent implements OnInit, OnChanges {
         this.loadCourseProgress();
       } else {
         this.loadCourseItemCounts();
+        this.continueLearningCourses = [];
       }
+      this.groupCoursesByCategory();
+    } else if (changes['courses'] && this.courses.length === 0) {
+      this.continueLearningCourses = [];
     }
   }
 
@@ -172,6 +194,8 @@ export class CourseListComponent implements OnInit, OnChanges {
               completedItems: completedCount,
               completionPercentage: completionPercentage
             });
+
+            this.updateContinueLearningCourses();
           },
           error: (error) => {
             console.error('Error loading completion statuses:', error);
@@ -253,5 +277,107 @@ export class CourseListComponent implements OnInit, OnChanges {
       completedItems: 0,
       completionPercentage: 0
     };
+  }
+
+  private loadCategories(): void {
+    if (!this.categoryService) {
+      return;
+    }
+
+    this.categoriesLoading = true;
+    this.categoryService.getAllCategories().pipe(
+      catchError(error => {
+        console.error('Error loading categories:', error);
+        this.categoriesLoading = false;
+        return of([]);
+      })
+    ).subscribe({
+      next: (categories) => {
+        this.categories = categories;
+        this.categoriesLoading = false;
+        if (this.courses.length > 0) {
+          this.groupCoursesByCategory();
+        }
+      }
+    });
+  }
+
+  private groupCoursesByCategory(): void {
+    this.categoriesWithCourses = [];
+    this.uncategorizedCourses = [];
+
+    if (this.categories.length === 0) {
+      this.uncategorizedCourses = [...this.courses];
+      return;
+    }
+
+    const categoryMap = new Map<string, LearningCourseCategory>();
+    this.categories.forEach(cat => {
+      categoryMap.set(cat.id, cat);
+    });
+
+    const categoryCoursesMap = new Map<string, LearningCourse[]>();
+    
+    this.courses.forEach(course => {
+      if (course.categoryId && categoryMap.has(course.categoryId)) {
+        if (!categoryCoursesMap.has(course.categoryId)) {
+          categoryCoursesMap.set(course.categoryId, []);
+        }
+        categoryCoursesMap.get(course.categoryId)!.push(course);
+      } else {
+        this.uncategorizedCourses.push(course);
+      }
+    });
+
+    this.categories.forEach(category => {
+      const courses = categoryCoursesMap.get(category.id) || [];
+      if (courses.length > 0) {
+        this.categoriesWithCourses.push({
+          category,
+          courses
+        });
+      }
+    });
+
+    this.categoriesWithCourses.sort((a, b) => 
+      a.category.name.localeCompare(b.category.name)
+    );
+  }
+
+  trackByCategoryId(index: number, item: CategoryWithCourses): string {
+    return item.category.id;
+  }
+
+  private updateContinueLearningCourses(): void {
+    if (!this.isAuthenticated || this.courses.length === 0) {
+      this.continueLearningCourses = [];
+      return;
+    }
+
+    const incompleteCoursesWithActivity = this.courses
+      .map(course => {
+        const progress = this.courseProgress.get(course.id);
+        return {
+          course,
+          progress: progress || {
+            totalItems: 0,
+            completedItems: 0,
+            completionPercentage: 0
+          }
+        };
+      })
+      .filter(item => 
+        item.progress.completedItems > 0 && 
+        item.progress.completionPercentage < 100
+      );
+
+    incompleteCoursesWithActivity.sort((a, b) => {
+      if (b.progress.completionPercentage !== a.progress.completionPercentage) {
+        return b.progress.completionPercentage - a.progress.completionPercentage;
+      }
+      return b.progress.completedItems - a.progress.completedItems;
+    });
+
+    this.continueLearningCourses = incompleteCoursesWithActivity.map(item => item.course);
   }
 }

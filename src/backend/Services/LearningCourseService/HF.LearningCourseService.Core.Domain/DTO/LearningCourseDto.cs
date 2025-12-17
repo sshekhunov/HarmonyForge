@@ -6,5 +6,6 @@ public class LearningCourseDto
     public string Code { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public Guid? CategoryId { get; set; }
     public ICollection<LearningModuleDto> Modules { get; set; } = [];
 }

@@ -37,8 +37,63 @@
 
 <!-- Courses Section -->
 <div *ngIf="!loading && !error && courses.length > 0" class="courses-section">
+  
+  <!-- Continue Learning Section -->
+  <div *ngIf="isAuthenticated && continueLearningCourses.length > 0" class="category-section continue-learning-section">
+    <div class="category-header">
+      <h2 class="category-title">Продолжить обучение</h2>
+    </div>
+    
+    <div class="courses-grid">
+      <app-course-card
+        *ngFor="let course of continueLearningCourses; trackBy: trackByCourseId"
+        [course]="course"
+        [itemCount]="getCourseProgress(course.id).totalItems"
+        [completionPercentage]="getCourseProgress(course.id).completionPercentage"
+        (courseSelected)="onCourseSelected($event)">
+      </app-course-card>
+    </div>
+  </div>
 
-  <div class="courses-grid">
+  <!-- Category Sections -->
+  <div *ngFor="let categoryWithCourses of categoriesWithCourses; trackBy: trackByCategoryId" class="category-section">
+    <div class="category-header">
+      <h2 class="category-title">{{ categoryWithCourses.category.name }}</h2>
+      <p *ngIf="categoryWithCourses.category.description" class="category-description">
+        {{ categoryWithCourses.category.description }}
+      </p>
+    </div>
+    
+    <div class="courses-grid">
+      <app-course-card
+        *ngFor="let course of categoryWithCourses.courses; trackBy: trackByCourseId"
+        [course]="course"
+        [itemCount]="getCourseProgress(course.id).totalItems"
+        [completionPercentage]="getCourseProgress(course.id).completionPercentage"
+        (courseSelected)="onCourseSelected($event)">
+      </app-course-card>
+    </div>
+  </div>
+
+  <!-- Uncategorized Courses Section -->
+  <div *ngIf="uncategorizedCourses.length > 0" class="category-section">
+    <div class="category-header">
+      <h2 class="category-title">Другие курсы</h2>
+    </div>
+    
+    <div class="courses-grid">
+      <app-course-card
+        *ngFor="let course of uncategorizedCourses; trackBy: trackByCourseId"
+        [course]="course"
+        [itemCount]="getCourseProgress(course.id).totalItems"
+        [completionPercentage]="getCourseProgress(course.id).completionPercentage"
+        (courseSelected)="onCourseSelected($event)">
+      </app-course-card>
+    </div>
+  </div>
+
+  <!-- Fallback: If no categories are loaded, show all courses in a single grid -->
+  <div *ngIf="categoriesWithCourses.length === 0 && uncategorizedCourses.length === 0 && !categoriesLoading" class="courses-grid">
     <app-course-card
       *ngFor="let course of courses; trackBy: trackByCourseId"
       [course]="course"

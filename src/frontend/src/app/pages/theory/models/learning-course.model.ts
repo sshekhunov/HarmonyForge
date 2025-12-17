@@ -3,6 +3,7 @@ export interface LearningCourse {
   code: string;
   title: string;
   description: string;
+  categoryId?: string;
   modules: LearningModule[];
 }
 
