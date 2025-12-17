@@ -29,9 +29,9 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
     musicXml = '';
     files: any[] = [];
     checkResult = '';
-    noteCount = 0;
     isLoading = false;
     analysisResult: AnalysisResult | null = null;
+    isSuccessful = false;
 
     nestedPanelSizes: number[] = [50, 50];
     SeverityLevel = SeverityLevel;
@@ -44,13 +44,13 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
     ngOnInit(): void {
         this.musicXml = '';
         this.checkResult = '';
-        this.noteCount = 0;
         this.analysisResult = null;
+        this.isSuccessful = false;
         this.updateNestedPanelSizes();
     }
 
     private updateNestedPanelSizes() {
-        if (this.checkResult === '') {
+        if (!this.analysisResult && this.checkResult === '') {
             this.nestedPanelSizes = [90, 10];
         } else {
             this.nestedPanelSizes = [50, 50];
@@ -133,8 +133,8 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
         this.files = [];
         this.musicXml = '';
         this.checkResult = '';
-        this.noteCount = 0;
         this.analysisResult = null;
+        this.isSuccessful = false;
         this.updateNestedPanelSizes();
 
         if (this.fileInputRef?.nativeElement) {
@@ -159,16 +159,19 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
             const response = await this.trainingService.analyzeHarmony(request).toPromise();
 
             if (response?.isSuccessful) {
-                this.noteCount = response.noteCount;
                 this.analysisResult = response.analysisResult || null;
-                this.checkResult = `Анализ завершен успешно! Найдено нот: ${response.noteCount}`;
+                this.checkResult = '';
+                this.isSuccessful = true;
                 this.analysisComplete.emit(response);
             } else {
                 this.checkResult = `Ошибка анализа: ${response?.errorMessage || 'Неизвестная ошибка'}`;
                 this.analysisResult = null;
+                this.isSuccessful = false;
             }
         } catch (error) {
             this.checkResult = `Ошибка при отправке запроса на сервер: ${error}`;
+            this.analysisResult = null;
+            this.isSuccessful = false;
         } finally {
             this.isLoading = false;
             this.updateNestedPanelSizes();

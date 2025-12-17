@@ -6,13 +6,7 @@ namespace HF.HarmonyAnalysisService.Core.Application.Services;
 
 public class HarmonyAnalysisService : IHarmonyAnalysisService
 {
-    private readonly IMusicXmlParser _musicXmlParser;
     private readonly Random _random = new Random();
-
-    public HarmonyAnalysisService(IMusicXmlParser musicXmlParser)
-    {
-        _musicXmlParser = musicXmlParser;
-    }
 
     public async Task<HarmonyAnalysisResponseDto> AnalyseHarmonyAsync(HarmonyAnalysisRequestDto request)
     {
@@ -29,18 +23,11 @@ public class HarmonyAnalysisService : IHarmonyAnalysisService
                     };
                 }
 
-                // Parse the MusicXML content
-                var score = _musicXmlParser.ParseMusicXml(request.MusicXmlContent);
-
-                // Count the notes
-                var noteCount = score.Notes.Count;
-
                 // Generate random analysis result with 3-5 positions
                 var analysisResult = GenerateRandomAnalysisResult();
 
                 return new HarmonyAnalysisResponseDto
                 {
-                    NoteCount = noteCount,
                     IsSuccessful = true,
                     AnalysisResult = analysisResult
                 };

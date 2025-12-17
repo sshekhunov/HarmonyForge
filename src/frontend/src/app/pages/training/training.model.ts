@@ -3,7 +3,6 @@ export interface HarmonyAnalysisRequest {
 }
 
 export interface HarmonyAnalysisResponse {
-  noteCount: number;
   isSuccessful: boolean;
   errorMessage?: string;
   analysisResult?: AnalysisResult;
