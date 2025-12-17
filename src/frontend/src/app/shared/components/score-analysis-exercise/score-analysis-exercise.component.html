@@ -114,6 +114,39 @@
                       </div>
                   </div>
                   }
+
+                  @if (analysisResult)
+                  {
+                  <div class="analysis-result">
+                      <div class="analysis-score">
+                          <h4 class="score-title">Общая оценка</h4>
+                          <div class="score-value">{{ analysisResult.score | number:'1.0-2' }}%</div>
+                          <p class="score-feedback">{{ analysisResult.feedback }}</p>
+                      </div>
+
+                      @if (analysisResult.positions && analysisResult.positions.length > 0)
+                      {
+                      <div class="analysis-positions">
+                          <h4 class="positions-title">Найденные проблемы ({{ analysisResult.positions.length }})</h4>
+                          <div class="positions-list">
+                              @for (position of analysisResult.positions; track position.position)
+                              {
+                              <div class="position-item" [ngClass]="getSeverityClass(position.severity)">
+                                  <div class="position-header">
+                                      <span class="position-number">{{ position.position }}</span>
+                                      <span class="position-severity" [ngClass]="'severity-badge-' + getSeverityClass(position.severity)">
+                                          {{ getSeverityLabel(position.severity) }}
+                                      </span>
+                                  </div>
+                                  <h5 class="position-title">{{ position.title }}</h5>
+                                  <p class="position-feedback">{{ position.feedback }}</p>
+                              </div>
+                              }
+                          </div>
+                      </div>
+                      }
+                  </div>
+                  }
               </div>
             </div>
             }

@@ -6,7 +6,7 @@ import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
 import { SplitterModule } from 'primeng/splitter';
 import { TrainingService } from '../../../pages/training/training.service';
-import { HarmonyAnalysisRequest, HarmonyAnalysisResponse } from '../../../pages/training/training.model';
+import { HarmonyAnalysisRequest, HarmonyAnalysisResponse, AnalysisResult, SeverityLevel } from '../../../pages/training/training.model';
 import { LearningContentRendererComponent } from '@/shared/components/learning-content-renderer/learning-content-renderer.component';
 import { LearningArticleContentItem } from '../../../pages/theory/models/learning-article.model';
 
@@ -31,8 +31,10 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
     checkResult = '';
     noteCount = 0;
     isLoading = false;
+    analysisResult: AnalysisResult | null = null;
 
     nestedPanelSizes: number[] = [50, 50];
+    SeverityLevel = SeverityLevel;
 
     constructor(
         private trainingService: TrainingService,
@@ -43,6 +45,7 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
         this.musicXml = '';
         this.checkResult = '';
         this.noteCount = 0;
+        this.analysisResult = null;
         this.updateNestedPanelSizes();
     }
 
@@ -51,6 +54,32 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
             this.nestedPanelSizes = [90, 10];
         } else {
             this.nestedPanelSizes = [50, 50];
+        }
+    }
+
+    getSeverityClass(severity: SeverityLevel): string {
+        switch (severity) {
+            case SeverityLevel.Low:
+                return 'severity-low';
+            case SeverityLevel.Medium:
+                return 'severity-medium';
+            case SeverityLevel.High:
+                return 'severity-high';
+            default:
+                return '';
+        }
+    }
+
+    getSeverityLabel(severity: SeverityLevel): string {
+        switch (severity) {
+            case SeverityLevel.Low:
+                return 'Низкая';
+            case SeverityLevel.Medium:
+                return 'Средняя';
+            case SeverityLevel.High:
+                return 'Высокая';
+            default:
+                return '';
         }
     }
 
@@ -105,6 +134,7 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
         this.musicXml = '';
         this.checkResult = '';
         this.noteCount = 0;
+        this.analysisResult = null;
         this.updateNestedPanelSizes();
 
         if (this.fileInputRef?.nativeElement) {
@@ -130,10 +160,12 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
 
             if (response?.isSuccessful) {
                 this.noteCount = response.noteCount;
+                this.analysisResult = response.analysisResult || null;
                 this.checkResult = `Анализ завершен успешно! Найдено нот: ${response.noteCount}`;
                 this.analysisComplete.emit(response);
             } else {
                 this.checkResult = `Ошибка анализа: ${response?.errorMessage || 'Неизвестная ошибка'}`;
+                this.analysisResult = null;
             }
         } catch (error) {
             this.checkResult = `Ошибка при отправке запроса на сервер: ${error}`;
