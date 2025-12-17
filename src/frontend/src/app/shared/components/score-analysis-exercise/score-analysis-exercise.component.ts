@@ -2,11 +2,12 @@ import { Component, ViewChild, ElementRef, Input, Output, EventEmitter, OnInit, 
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { OsmdRendererModule } from '@/shared/components/osmd-renderer/osmd-renderer.module';
+import { HighlightedNote, NotePosition } from '@/shared/components/osmd-renderer/osmd-renderer.component';
 import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
 import { SplitterModule } from 'primeng/splitter';
 import { TrainingService } from '../../../pages/training/training.service';
-import { HarmonyAnalysisRequest, HarmonyAnalysisResponse, AnalysisResult, SeverityLevel } from '../../../pages/training/training.model';
+import { HarmonyAnalysisRequest, HarmonyAnalysisResponse, AnalysisResult, SeverityLevel, MusicXmlNotePosition } from '../../../pages/training/training.model';
 import { LearningContentRendererComponent } from '@/shared/components/learning-content-renderer/learning-content-renderer.component';
 import { LearningArticleContentItem } from '../../../pages/theory/models/learning-article.model';
 
@@ -32,6 +33,7 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
     isLoading = false;
     analysisResult: AnalysisResult | null = null;
     isSuccessful = false;
+    highlightedNotes: HighlightedNote[] = [];
 
     nestedPanelSizes: number[] = [50, 50];
     SeverityLevel = SeverityLevel;
@@ -46,6 +48,7 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
         this.checkResult = '';
         this.analysisResult = null;
         this.isSuccessful = false;
+        this.highlightedNotes = [];
         this.updateNestedPanelSizes();
     }
 
@@ -81,6 +84,46 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
             default:
                 return '';
         }
+    }
+
+    getSeverityColor(severity: SeverityLevel): string {
+        switch (severity) {
+            case SeverityLevel.Low:
+                return '#10b981'; // Green
+            case SeverityLevel.Medium:
+                return '#f59e0b'; // Orange/Amber
+            case SeverityLevel.High:
+                return '#ef4444'; // Red
+            default:
+                return '#6b7280'; // Gray
+        }
+    }
+
+    convertAnalysisResultToHighlightedNotes(analysisResult: AnalysisResult | null): HighlightedNote[] {
+        if (!analysisResult || !analysisResult.positions) {
+            return [];
+        }
+
+        const highlightedNotes: HighlightedNote[] = [];
+
+        analysisResult.positions.forEach((position) => {
+            const color = this.getSeverityColor(position.severity);
+            
+            if (position.relatedNotes && position.relatedNotes.length > 0) {
+                position.relatedNotes.forEach((notePos: MusicXmlNotePosition) => {
+                    const notePosition = new NotePosition(
+                        notePos.measureArrayIndex,
+                        notePos.measureIndex,
+                        notePos.staffEntryIndex,
+                        notePos.voiceEntryIndex,
+                        notePos.noteIndex
+                    );
+                    highlightedNotes.push(new HighlightedNote(notePosition, color));
+                });
+            }
+        });
+
+        return highlightedNotes;
     }
 
     onFileSelected(event: Event) {
@@ -135,6 +178,7 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
         this.checkResult = '';
         this.analysisResult = null;
         this.isSuccessful = false;
+        this.highlightedNotes = [];
         this.updateNestedPanelSizes();
 
         if (this.fileInputRef?.nativeElement) {
@@ -162,16 +206,20 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
                 this.analysisResult = response.analysisResult || null;
                 this.checkResult = '';
                 this.isSuccessful = true;
+                // Create a new array reference to trigger change detection
+                this.highlightedNotes = [...this.convertAnalysisResultToHighlightedNotes(this.analysisResult)];
                 this.analysisComplete.emit(response);
             } else {
                 this.checkResult = `Ошибка анализа: ${response?.errorMessage || 'Неизвестная ошибка'}`;
                 this.analysisResult = null;
                 this.isSuccessful = false;
+                this.highlightedNotes = [];
             }
         } catch (error) {
             this.checkResult = `Ошибка при отправке запроса на сервер: ${error}`;
             this.analysisResult = null;
             this.isSuccessful = false;
+            this.highlightedNotes = [];
         } finally {
             this.isLoading = false;
             this.updateNestedPanelSizes();
