@@ -83,55 +83,47 @@ public class MusicXmlParser : IMusicXmlParser
                     if (noteNodes == null || noteNodes.Count == 0)
                         continue;
 
+                    // Group notes by time position (staff entries)
+                    // Notes at the same time are those where subsequent notes have <chord> element
                     int staffEntryIndex = 0;
-                    int voiceEntryIndex = 0;
-                    int noteIndex = 0;
-                    bool isFirstNoteInMeasure = true;
+                    var currentStaffEntryNotes = new List<(XmlNode node, int voice)>();
 
-                    foreach (XmlNode noteNode in noteNodes)
+                    for (int i = 0; i < noteNodes.Count; i++)
                     {
-                        // Check if this note is part of a chord (same staff entry and voice)
+                        var noteNode = noteNodes[i];
                         var chordNode = noteNode.SelectSingleNode("chord");
                         bool isChord = chordNode != null;
 
-                        // Check voice (if specified)
+                        // Get voice number
                         var voiceNode = noteNode.SelectSingleNode("voice");
-                        int currentVoice = 0;
+                        int voiceNumber = 0;
                         if (voiceNode != null && int.TryParse(voiceNode.InnerText, out int parsedVoice))
                         {
-                            currentVoice = parsedVoice;
+                            voiceNumber = parsedVoice;
                         }
 
-                        if (isFirstNoteInMeasure)
+                        // If this is not a chord note and we have notes in the current staff entry,
+                        // it means we're starting a new time position (new staff entry)
+                        if (!isChord && currentStaffEntryNotes.Count > 0)
                         {
-                            // First note in the measure
-                            staffEntryIndex = 0;
-                            voiceEntryIndex = currentVoice;
-                            noteIndex = 0;
-                            isFirstNoteInMeasure = false;
-                        }
-                        else if (isChord)
-                        {
-                            // Same staff entry, same voice, different note in chord
-                            noteIndex++;
-                        }
-                        else
-                        {
-                            // New staff entry (new time position)
+                            // Process previous staff entry before starting new one
+                            ProcessStaffEntry(currentStaffEntryNotes, notePositions, 
+                                partIndex, measureIndex, staffEntryIndex);
+                            
+                            // Start new staff entry
+                            currentStaffEntryNotes.Clear();
                             staffEntryIndex++;
-                            voiceEntryIndex = currentVoice;
-                            noteIndex = 0;
                         }
 
-                        // Create note position
-                        notePositions.Add(new MusicXmlNotePosition
-                        {
-                            MeasureArrayIndex = partIndex,
-                            MeasureIndex = measureIndex,
-                            StaffEntryIndex = staffEntryIndex,
-                            VoiceEntryIndex = voiceEntryIndex,
-                            NoteIndex = noteIndex
-                        });
+                        // Add note to current staff entry
+                        currentStaffEntryNotes.Add((noteNode, voiceNumber));
+                    }
+
+                    // Process the last staff entry
+                    if (currentStaffEntryNotes.Count > 0)
+                    {
+                        ProcessStaffEntry(currentStaffEntryNotes, notePositions, 
+                            partIndex, measureIndex, staffEntryIndex);
                     }
                 }
             }
@@ -144,6 +136,37 @@ public class MusicXmlParser : IMusicXmlParser
         }
 
         return notePositions;
+    }
+
+    private void ProcessStaffEntry(List<(XmlNode node, int voice)> staffEntryNotes, 
+        List<MusicXmlNotePosition> notePositions,
+        int partIndex, int measureIndex, int staffEntryIndex)
+    {
+        // Group notes by voice within this staff entry
+        // OSMD structures: staffEntry -> graphicalVoiceEntries[] -> notes[]
+        var notesByVoice = staffEntryNotes
+            .GroupBy(n => n.voice)
+            .OrderBy(g => g.Key) // Order by voice number for consistent indexing
+            .ToList();
+        
+        int voiceEntryIndex = 0;
+        foreach (var voiceGroup in notesByVoice)
+        {
+            int noteIndex = 0;
+            foreach (var (node, _) in voiceGroup)
+            {
+                notePositions.Add(new MusicXmlNotePosition
+                {
+                    MeasureArrayIndex = partIndex,
+                    MeasureIndex = measureIndex,
+                    StaffEntryIndex = staffEntryIndex,
+                    VoiceEntryIndex = voiceEntryIndex,
+                    NoteIndex = noteIndex
+                });
+                noteIndex++;
+            }
+            voiceEntryIndex++;
+        }
     }
 
     private Note? ParseNote(XmlNode noteNode)

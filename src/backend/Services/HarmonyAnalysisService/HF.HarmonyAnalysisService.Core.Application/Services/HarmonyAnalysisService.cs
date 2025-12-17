@@ -29,10 +29,8 @@ public class HarmonyAnalysisService : IHarmonyAnalysisService
                     };
                 }
 
-                // Parse the MusicXML content to extract note positions
                 var score = _musicXmlParser.ParseMusicXml(request.MusicXmlContent);
 
-                // Generate random analysis result with 3-5 positions using actual note positions from the file
                 var analysisResult = GenerateRandomAnalysisResult(score.NotePositions);
 
                 return new HarmonyAnalysisResponseDto
@@ -113,14 +111,7 @@ public class HarmonyAnalysisService : IHarmonyAnalysisService
         {
             return new List<MusicXmlNotePosition>();
         }
-
-        var noteCount = _random.Next(1, Math.Min(4, availableNotePositions.Count + 1)); // 1-3 related notes, but not more than available
-        var selectedNotes = new List<MusicXmlNotePosition>();
-
-        // Select random notes from the available positions
-        var shuffled = availableNotePositions.OrderBy(x => _random.Next()).Take(noteCount);
-        selectedNotes.AddRange(shuffled);
-
-        return selectedNotes;
+        
+        return availableNotePositions;
     }
 }

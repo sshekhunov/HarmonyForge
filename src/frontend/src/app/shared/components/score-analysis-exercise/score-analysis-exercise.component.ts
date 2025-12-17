@@ -105,20 +105,28 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
         }
 
         const highlightedNotes: HighlightedNote[] = [];
+        const notePositionSet = new Set<string>(); // To track unique note positions
 
         analysisResult.positions.forEach((position) => {
             const color = this.getSeverityColor(position.severity);
 
             if (position.relatedNotes && position.relatedNotes.length > 0) {
                 position.relatedNotes.forEach((notePos: MusicXmlNotePosition) => {
-                    const notePosition = new NotePosition(
-                        notePos.measureArrayIndex,
-                        notePos.measureIndex,
-                        notePos.staffEntryIndex,
-                        notePos.voiceEntryIndex,
-                        notePos.noteIndex
-                    );
-                    highlightedNotes.push(new HighlightedNote(notePosition, color));
+                    // Create a unique key for this note position
+                    const positionKey = `${notePos.measureArrayIndex}-${notePos.measureIndex}-${notePos.staffEntryIndex}-${notePos.voiceEntryIndex}-${notePos.noteIndex}`;
+                    
+                    // Only add if we haven't seen this position before
+                    if (!notePositionSet.has(positionKey)) {
+                        notePositionSet.add(positionKey);
+                        const notePosition = new NotePosition(
+                            notePos.measureArrayIndex,
+                            notePos.measureIndex,
+                            notePos.staffEntryIndex,
+                            notePos.voiceEntryIndex,
+                            notePos.noteIndex
+                        );
+                        highlightedNotes.push(new HighlightedNote(notePosition, color));
+                    }
                 });
             }
         });
