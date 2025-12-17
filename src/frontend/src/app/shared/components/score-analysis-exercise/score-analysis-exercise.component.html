@@ -65,13 +65,26 @@
                 }
                 @else
                 {
-                <div class="uploaded-preview">
-                  <lib-osmd-renderer
-                    [source]="musicXml"
-                    [showTitleAndAuthor]="false"
-                    [highlightedNotes]="highlightedNotes">
-                  </lib-osmd-renderer>
-                </div>
+                    @if (highlightedNotes.length > 0)
+                    {
+                        <div class="uploaded-preview">
+                            <lib-osmd-renderer
+                                [source]="musicXml"
+                                [showTitleAndAuthor]="false"
+                                [highlightedNotes]="highlightedNotes">
+                            </lib-osmd-renderer>
+                        </div>
+                    }
+                    @else
+                    {
+                        <div class="uploaded-preview">
+                            <lib-osmd-renderer
+                                [source]="musicXml"
+                                [showTitleAndAuthor]="false">
+                            </lib-osmd-renderer>
+                        </div>
+                    }
+
                 }
                 <input
                   #fileInput

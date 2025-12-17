@@ -108,7 +108,7 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
 
         analysisResult.positions.forEach((position) => {
             const color = this.getSeverityColor(position.severity);
-            
+
             if (position.relatedNotes && position.relatedNotes.length > 0) {
                 position.relatedNotes.forEach((notePos: MusicXmlNotePosition) => {
                     const notePosition = new NotePosition(
@@ -206,8 +206,7 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
                 this.analysisResult = response.analysisResult || null;
                 this.checkResult = '';
                 this.isSuccessful = true;
-                // Create a new array reference to trigger change detection
-                this.highlightedNotes = [...this.convertAnalysisResultToHighlightedNotes(this.analysisResult)];
+                this.highlightedNotes = [...this.convertAnalysisResultToHighlightedNotes(this.analysisResult)];                
                 this.analysisComplete.emit(response);
             } else {
                 this.checkResult = `Ошибка анализа: ${response?.errorMessage || 'Неизвестная ошибка'}`;
