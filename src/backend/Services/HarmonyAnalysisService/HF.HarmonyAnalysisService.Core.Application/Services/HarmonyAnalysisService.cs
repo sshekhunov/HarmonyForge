@@ -1,4 +1,5 @@
 using HF.HarmonyAnalysisService.Core.Domain.DTO;
+using HF.HarmonyAnalysisService.Core.Domain.Entities;
 using HF.HarmonyAnalysisService.Core.Domain.Interfaces;
 
 namespace HF.HarmonyAnalysisService.Core.Application.Services;
@@ -6,10 +7,12 @@ namespace HF.HarmonyAnalysisService.Core.Application.Services;
 public class HarmonyAnalysisService : IHarmonyAnalysisService
 {
     private readonly IMusicXmlParser _musicXmlParser;
+    private readonly IHarmonyCheckStrategyProvider _strategyProvider;
 
-    public HarmonyAnalysisService(IMusicXmlParser musicXmlParser)
+    public HarmonyAnalysisService(IMusicXmlParser musicXmlParser, IHarmonyCheckStrategyProvider strategyProvider)
     {
         _musicXmlParser = musicXmlParser;
+        _strategyProvider = strategyProvider;
     }
 
     public async Task<HarmonyAnalysisResponseDto> AnalyseHarmonyAsync(HarmonyAnalysisRequestDto request)
@@ -27,16 +30,15 @@ public class HarmonyAnalysisService : IHarmonyAnalysisService
                     };
                 }
 
-                // Parse the MusicXML content
                 var score = _musicXmlParser.ParseMusicXml(request.MusicXmlContent);
-
-                // Count the notes
-                var noteCount = score.Notes.Count;
+                var strategy = _strategyProvider.GetStrategy(request.ExerciseType);
+                var checkResult = strategy.Check(score.VerticalSlices);
+                var analysisResult = BuildAnalysisResult(checkResult);
 
                 return new HarmonyAnalysisResponseDto
                 {
-                    NoteCount = noteCount,
-                    IsSuccessful = true
+                    IsSuccessful = true,
+                    AnalysisResult = analysisResult
                 };
             }
             catch (Exception ex)
@@ -48,5 +50,22 @@ public class HarmonyAnalysisService : IHarmonyAnalysisService
                 };
             }
         });
+    }
+
+    private static AnalysisResult BuildAnalysisResult(HarmonyCheckResult checkResult)
+    {
+        double score = 100 - checkResult.TotalMistakeCount * 5;
+        var overallFeedback = score >= 80
+            ? "Отличная работа! Гармонизация выполнена на высоком уровне."
+            : score >= 60
+                ? "Хорошая работа, но есть области для улучшения."
+                : "Требуется дополнительная работа над гармонизацией.";
+
+        return new AnalysisResult
+        {
+            Score = score,
+            Feedback = overallFeedback,
+            Positions = checkResult.Positions
+        };
     }
 }

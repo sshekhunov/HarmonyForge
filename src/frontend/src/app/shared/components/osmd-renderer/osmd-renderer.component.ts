@@ -107,6 +107,14 @@ export class OsmdRendererComponent implements OnChanges, AfterViewInit {
     }
   }
 
+  redraw(): void {
+    if (!this.openSheetMusicDisplay || !this.source) {
+      return;
+    }
+    this.openSheetMusicDisplay.render();
+    this.applyHighlightedNotes();
+  }
+
   applyHighlightedNotes(): void {
     if (!this.openSheetMusicDisplay) {
       return;

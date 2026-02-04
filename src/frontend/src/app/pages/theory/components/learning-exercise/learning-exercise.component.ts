@@ -142,7 +142,8 @@ export class LearningExerciseComponent implements OnInit {
           userId: user.userId,
           learningItemId: this.exercise.id,
           learningItemType: 'Excercise',
-          isCompleted: response.isSuccessful
+          isCompleted: response.isSuccessful,
+          score: response.analysisResult?.score
         }).subscribe({
           next: () => {
             console.log('Exercise status updated successfully');

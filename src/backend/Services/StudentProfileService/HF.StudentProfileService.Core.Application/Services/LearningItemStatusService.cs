@@ -41,6 +41,7 @@ public class LearningItemStatusService : ILearningItemStatusService
         if (existingStatus != null)
         {
             existingStatus.IsCompleted = request.IsCompleted;
+            existingStatus.Score = request.Score;
             existingStatus.DateTime = DateTime.UtcNow;
             await _learningItemStatusRepository.UpdateAsync(existingStatus, cancellationToken);
         }
@@ -52,6 +53,7 @@ public class LearningItemStatusService : ILearningItemStatusService
                 LearningItemId = request.LearningItemId,
                 LearningItemType = request.LearningItemType,
                 IsCompleted = request.IsCompleted,
+                Score = request.Score,
                 DateTime = DateTime.UtcNow,
                 Student = student
             };

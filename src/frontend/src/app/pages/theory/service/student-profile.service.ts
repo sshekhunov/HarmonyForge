@@ -8,6 +8,7 @@ export interface UpdateLearningItemStatusRequest {
   learningItemId: string;
   learningItemType: 'Article' | 'Excercise' | 'Test';
   isCompleted: boolean;
+  score?: number;
 }
 
 export interface GetLearningItemStatusesRequest {

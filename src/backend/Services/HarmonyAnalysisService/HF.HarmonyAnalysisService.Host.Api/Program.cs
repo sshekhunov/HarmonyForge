@@ -1,5 +1,5 @@
-
 using HF.HarmonyAnalysisService.Core.Application.Services;
+using HF.HarmonyAnalysisService.Core.Application.Strategies;
 using HF.HarmonyAnalysisService.Core.Domain.Interfaces;
 
 namespace HF.HarmonyAnalysisService.Host.Api
@@ -10,10 +10,8 @@ namespace HF.HarmonyAnalysisService.Host.Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
             builder.Services.AddControllers();
 
-            // Add CORS
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowLocalhost4200", policy =>
@@ -24,9 +22,9 @@ namespace HF.HarmonyAnalysisService.Host.Api
                 });
             });
 
-            // Register application services
             builder.Services.AddScoped<IMusicXmlParser, MusicXmlParser>();
-            builder.Services.AddScoped<IHarmonyAnalysisService, Core.Application.Services.HarmonyAnalysisService>();
+            builder.Services.AddScoped<IHarmonyCheckStrategyProvider, HarmonyCheckStrategyProvider>();
+            builder.Services.AddScoped<IHarmonyAnalysisService, HF.HarmonyAnalysisService.Core.Application.Services.HarmonyAnalysisService>();
             
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
