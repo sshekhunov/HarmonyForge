@@ -12,25 +12,21 @@ public class MusicXmlParser : IMusicXmlParser
         var xmlDoc = new XmlDocument();
         xmlDoc.LoadXml(musicXmlContent);
 
-        // Extract title
         var titleNode = xmlDoc.SelectSingleNode("//movement-title");
         if (titleNode != null)
         {
             score.Title = titleNode.InnerText;
         }
 
-        // Extract composer
         var composerNode = xmlDoc.SelectSingleNode("//creator[@type='composer']");
         if (composerNode != null)
         {
             score.Composer = composerNode.InnerText;
         }
 
-        // Count parts
         var parts = xmlDoc.SelectNodes("//part");
         score.PartCount = parts?.Count ?? 0;
 
-        // Extract notes
         var noteNodes = xmlDoc.SelectNodes("//note");
         if (noteNodes != null)
         {
@@ -44,47 +40,58 @@ public class MusicXmlParser : IMusicXmlParser
             }
         }
 
-        // Extract note positions
-        score.NotePositions = ExtractNotePositions(xmlDoc);
+        var sliceEntries = new List<(int partIndex, int measureIndex, int staffEntryIndex, int voiceIndex, int midiPitch)>();
+        score.NotePositions = ExtractNotePositions(xmlDoc, sliceEntries);
+        score.VerticalSlices = BuildVerticalSlices(sliceEntries);
 
         return score;
     }
 
-    private List<MusicXmlNotePosition> ExtractNotePositions(XmlDocument xmlDoc)
+    private static List<VerticalSlice> BuildVerticalSlices(
+        List<(int partIndex, int measureIndex, int staffEntryIndex, int voiceIndex, int midiPitch)> sliceEntries)
+    {
+        var grouped = sliceEntries
+            .GroupBy(e => (e.measureIndex, e.staffEntryIndex))
+            .OrderBy(g => g.Key.measureIndex).ThenBy(g => g.Key.staffEntryIndex)
+            .ToList();
+
+        return grouped.Select(g => new VerticalSlice
+        {
+            MeasureIndex = g.Key.measureIndex,
+            StaffEntryIndex = g.Key.staffEntryIndex,
+            VoicePitches = g.Select(e => new VoicePitch
+            {
+                PartIndex = e.partIndex,
+                VoiceIndex = e.voiceIndex,
+                MidiPitch = e.midiPitch
+            }).ToList()
+        }).ToList();
+    }
+
+    private List<MusicXmlNotePosition> ExtractNotePositions(XmlDocument xmlDoc,
+        List<(int partIndex, int measureIndex, int staffEntryIndex, int voiceIndex, int midiPitch)> sliceEntries)
     {
         var notePositions = new List<MusicXmlNotePosition>();
-        
+        sliceEntries.Clear();
+
         try
         {
-            // Get all parts
             var parts = xmlDoc.SelectNodes("//part");
             if (parts == null || parts.Count == 0)
-            {
                 return notePositions;
-            }
 
-            // Iterate through parts (measureArrayIndex)
             for (int partIndex = 0; partIndex < parts.Count; partIndex++)
             {
                 var part = parts[partIndex];
                 var measures = part.SelectNodes("measure");
+                if (measures == null) continue;
 
-                if (measures == null)
-                    continue;
-
-                // Iterate through measures (measureIndex)
                 for (int measureIndex = 0; measureIndex < measures.Count; measureIndex++)
                 {
                     var measure = measures[measureIndex];
-                    
-                    // Get all notes in this measure (excluding rests)
                     var noteNodes = measure.SelectNodes(".//note[not(rest)]");
-                    
-                    if (noteNodes == null || noteNodes.Count == 0)
-                        continue;
+                    if (noteNodes == null || noteNodes.Count == 0) continue;
 
-                    // Group notes by time position (staff entries)
-                    // Notes at the same time are those where subsequent notes have <chord> element
                     int staffEntryIndex = 0;
                     var currentStaffEntryNotes = new List<(XmlNode node, int voice)>();
 
@@ -94,67 +101,57 @@ public class MusicXmlParser : IMusicXmlParser
                         var chordNode = noteNode.SelectSingleNode("chord");
                         bool isChord = chordNode != null;
 
-                        // Get voice number
                         var voiceNode = noteNode.SelectSingleNode("voice");
                         int voiceNumber = 0;
                         if (voiceNode != null && int.TryParse(voiceNode.InnerText, out int parsedVoice))
-                        {
                             voiceNumber = parsedVoice;
-                        }
 
-                        // If this is not a chord note and we have notes in the current staff entry,
-                        // it means we're starting a new time position (new staff entry)
                         if (!isChord && currentStaffEntryNotes.Count > 0)
                         {
-                            // Process previous staff entry before starting new one
-                            ProcessStaffEntry(currentStaffEntryNotes, notePositions, 
+                            ProcessStaffEntry(currentStaffEntryNotes, notePositions, sliceEntries,
                                 partIndex, measureIndex, staffEntryIndex);
-                            
-                            // Start new staff entry
                             currentStaffEntryNotes.Clear();
                             staffEntryIndex++;
                         }
 
-                        // Add note to current staff entry
                         currentStaffEntryNotes.Add((noteNode, voiceNumber));
                     }
 
-                    // Process the last staff entry
                     if (currentStaffEntryNotes.Count > 0)
-                    {
-                        ProcessStaffEntry(currentStaffEntryNotes, notePositions, 
+                        ProcessStaffEntry(currentStaffEntryNotes, notePositions, sliceEntries,
                             partIndex, measureIndex, staffEntryIndex);
-                    }
                 }
             }
         }
         catch (Exception ex)
         {
-            // If parsing fails, return empty list
-            // The service will still work but won't have note positions
             Console.WriteLine($"Error extracting note positions: {ex.Message}");
         }
 
         return notePositions;
     }
 
-    private void ProcessStaffEntry(List<(XmlNode node, int voice)> staffEntryNotes, 
+    private void ProcessStaffEntry(
+        List<(XmlNode node, int voice)> staffEntryNotes,
         List<MusicXmlNotePosition> notePositions,
+        List<(int partIndex, int measureIndex, int staffEntryIndex, int voiceIndex, int midiPitch)> sliceEntries,
         int partIndex, int measureIndex, int staffEntryIndex)
     {
-        // Group notes by voice within this staff entry
-        // OSMD structures: staffEntry -> graphicalVoiceEntries[] -> notes[]
         var notesByVoice = staffEntryNotes
             .GroupBy(n => n.voice)
-            .OrderBy(g => g.Key) // Order by voice number for consistent indexing
+            .OrderBy(g => g.Key)
             .ToList();
-        
+
         int voiceEntryIndex = 0;
         foreach (var voiceGroup in notesByVoice)
         {
+            int? lowestMidi = null;
             int noteIndex = 0;
             foreach (var (node, _) in voiceGroup)
             {
+                var midi = GetMidiPitch(node);
+                if (midi.HasValue && (!lowestMidi.HasValue || midi.Value < lowestMidi.Value))
+                    lowestMidi = midi.Value;
                 notePositions.Add(new MusicXmlNotePosition
                 {
                     MeasureArrayIndex = partIndex,
@@ -165,8 +162,31 @@ public class MusicXmlParser : IMusicXmlParser
                 });
                 noteIndex++;
             }
+            if (lowestMidi.HasValue)
+                sliceEntries.Add((partIndex, measureIndex, staffEntryIndex, voiceEntryIndex, lowestMidi.Value));
             voiceEntryIndex++;
         }
+    }
+
+    private static int? GetMidiPitch(XmlNode noteNode)
+    {
+        var pitchNode = noteNode.SelectSingleNode("pitch");
+        if (pitchNode == null) return null;
+        var stepNode = pitchNode.SelectSingleNode("step");
+        var octaveNode = pitchNode.SelectSingleNode("octave");
+        if (stepNode == null || octaveNode == null) return null;
+        if (!int.TryParse(octaveNode.InnerText, out int octave)) return null;
+
+        int stepSemitones = stepNode.InnerText switch
+        {
+            "C" => 0, "D" => 2, "E" => 4, "F" => 5, "G" => 7, "A" => 9, "B" => 11,
+            _ => 0
+        };
+        int alter = 0;
+        var alterNode = pitchNode.SelectSingleNode("alter");
+        if (alterNode != null) int.TryParse(alterNode.InnerText, out alter);
+
+        return 60 + (octave - 4) * 12 + stepSemitones + alter;
     }
 
     private Note? ParseNote(XmlNode noteNode)
@@ -175,7 +195,6 @@ public class MusicXmlParser : IMusicXmlParser
         {
             var note = new Note();
 
-            // Extract pitch
             var pitchNode = noteNode.SelectSingleNode("pitch");
             if (pitchNode != null)
             {
@@ -199,21 +218,18 @@ public class MusicXmlParser : IMusicXmlParser
                 }
             }
 
-            // Extract duration
             var durationNode = noteNode.SelectSingleNode("duration");
             if (durationNode != null)
             {
                 note.Duration = decimal.Parse(durationNode.InnerText);
             }
 
-            // Extract staff (if available)
             var staffNode = noteNode.SelectSingleNode("staff");
             if (staffNode != null)
             {
                 note.Staff = int.Parse(staffNode.InnerText);
             }
 
-            // Extract measure number (approximate by counting measures before this note)
             var measureNode = noteNode.SelectSingleNode("ancestor::measure");
             if (measureNode != null)
             {
@@ -228,7 +244,6 @@ public class MusicXmlParser : IMusicXmlParser
         }
         catch
         {
-            // Skip notes that can't be parsed
             return null;
         }
     }
