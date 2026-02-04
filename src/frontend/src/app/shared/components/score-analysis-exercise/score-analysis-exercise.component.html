@@ -1,4 +1,4 @@
-<p-splitter [style]="{'height': '100%', 'width': '100%'}" [panelSizes]="[50, 50]" styleClass="score-analysis-splitter">
+<p-splitter [style]="{'height': '100%', 'width': '100%'}" [panelSizes]="[50, 50]" styleClass="score-analysis-splitter" (onResizeEnd)="onSplitterResizeEnd()">
   <ng-template pTemplate>
     <div class="splitter-panel panel-content">
       <div class="panel-card">
@@ -19,7 +19,7 @@
   </ng-template>
 
   <ng-template pTemplate>
-    <p-splitter layout="vertical" [panelSizes]="nestedPanelSizes" styleClass="score-analysis-splitter-nested">
+    <p-splitter layout="vertical" [panelSizes]="nestedPanelSizes" styleClass="score-analysis-splitter-nested" (onResizeEnd)="onSplitterResizeEnd()">
       <ng-template pTemplate>
         <div class="splitter-panel panel-upload">
           <div class="panel-card">

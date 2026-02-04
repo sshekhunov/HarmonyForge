@@ -1,8 +1,8 @@
-import { Component, ViewChild, ElementRef, Input, Output, EventEmitter, OnInit, Optional } from '@angular/core';
+import { Component, ViewChild, ViewChildren, QueryList, ElementRef, Input, Output, EventEmitter, OnInit, Optional } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { OsmdRendererModule } from '@/shared/components/osmd-renderer/osmd-renderer.module';
-import { HighlightedNote, NotePosition } from '@/shared/components/osmd-renderer/osmd-renderer.component';
+import { OsmdRendererComponent, HighlightedNote, NotePosition } from '@/shared/components/osmd-renderer/osmd-renderer.component';
 import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
 import { SplitterModule } from 'primeng/splitter';
@@ -20,6 +20,7 @@ import { LearningArticleContentItem } from '../../../pages/theory/models/learnin
 })
 export class ScoreAnalysisExerciseComponent implements OnInit {
     @ViewChild('fileInput') fileInputRef!: ElementRef<HTMLInputElement>;
+    @ViewChildren(OsmdRendererComponent) osmdRenderers!: QueryList<OsmdRendererComponent>;
 
     @Input() taskContentItems: LearningArticleContentItem[] = [];
     @Input() taskTitle: string = 'Задание';
@@ -105,17 +106,15 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
         }
 
         const highlightedNotes: HighlightedNote[] = [];
-        const notePositionSet = new Set<string>(); // To track unique note positions
+        const notePositionSet = new Set<string>();
 
         analysisResult.positions.forEach((position) => {
             const color = this.getSeverityColor(position.severity);
 
             if (position.relatedNotes && position.relatedNotes.length > 0) {
                 position.relatedNotes.forEach((notePos: MusicXmlNotePosition) => {
-                    // Create a unique key for this note position
                     const positionKey = `${notePos.measureArrayIndex}-${notePos.measureIndex}-${notePos.staffEntryIndex}-${notePos.voiceEntryIndex}-${notePos.noteIndex}`;
                     
-                    // Only add if we haven't seen this position before
                     if (!notePositionSet.has(positionKey)) {
                         notePositionSet.add(positionKey);
                         const notePosition = new NotePosition(
@@ -237,6 +236,10 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
         if (this.backLink && this.router) {
             this.router.navigateByUrl(this.backLink);
         }
+    }
+
+    onSplitterResizeEnd(): void {
+        this.osmdRenderers?.forEach((r) => r.redraw());
     }
 }
 
