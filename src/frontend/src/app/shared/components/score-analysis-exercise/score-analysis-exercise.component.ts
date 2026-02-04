@@ -7,7 +7,7 @@ import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
 import { SplitterModule } from 'primeng/splitter';
 import { TrainingService } from '../../../pages/training/training.service';
-import { HarmonyAnalysisRequest, HarmonyAnalysisResponse, AnalysisResult, SeverityLevel, MusicXmlNotePosition } from '../../../pages/training/training.model';
+import { HarmonyAnalysisRequest, HarmonyAnalysisResponse, AnalysisResult, SeverityLevel, MusicXmlNotePosition, ExerciseType } from '../../../pages/training/training.model';
 import { LearningContentRendererComponent } from '@/shared/components/learning-content-renderer/learning-content-renderer.component';
 import { LearningArticleContentItem } from '../../../pages/theory/models/learning-article.model';
 
@@ -25,6 +25,7 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
     @Input() taskContentItems: LearningArticleContentItem[] = [];
     @Input() taskTitle: string = 'Задание';
     @Input() backLink?: string;
+    @Input() exerciseType: ExerciseType = ExerciseType.Full;
 
     @Output() analysisComplete = new EventEmitter<HarmonyAnalysisResponse>();
 
@@ -204,7 +205,8 @@ export class ScoreAnalysisExerciseComponent implements OnInit {
 
         try {
             const request: HarmonyAnalysisRequest = {
-                musicXmlContent: this.musicXml
+                musicXmlContent: this.musicXml,
+                exerciseType: this.exerciseType
             };
 
             const response = await this.trainingService.analyzeHarmony(request).toPromise();

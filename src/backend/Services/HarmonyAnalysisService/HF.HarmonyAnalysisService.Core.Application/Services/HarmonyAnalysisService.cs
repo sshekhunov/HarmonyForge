@@ -7,13 +7,12 @@ namespace HF.HarmonyAnalysisService.Core.Application.Services;
 public class HarmonyAnalysisService : IHarmonyAnalysisService
 {
     private readonly IMusicXmlParser _musicXmlParser;
-    private readonly IEnumerable<IHarmonyCheckCommand> _checkCommands;
-    private readonly Random _random = new Random();
+    private readonly IHarmonyCheckStrategyProvider _strategyProvider;
 
-    public HarmonyAnalysisService(IMusicXmlParser musicXmlParser, IEnumerable<IHarmonyCheckCommand> checkCommands)
+    public HarmonyAnalysisService(IMusicXmlParser musicXmlParser, IHarmonyCheckStrategyProvider strategyProvider)
     {
         _musicXmlParser = musicXmlParser;
-        _checkCommands = checkCommands;
+        _strategyProvider = strategyProvider;
     }
 
     public async Task<HarmonyAnalysisResponseDto> AnalyseHarmonyAsync(HarmonyAnalysisRequestDto request)
@@ -32,7 +31,9 @@ public class HarmonyAnalysisService : IHarmonyAnalysisService
                 }
 
                 var score = _musicXmlParser.ParseMusicXml(request.MusicXmlContent);
-                var analysisResult = GenerateAnalysisResult(score.VerticalSlices);
+                var strategy = _strategyProvider.GetStrategy(request.ExerciseType);
+                var checkResult = strategy.Check(score.VerticalSlices);
+                var analysisResult = BuildAnalysisResult(checkResult);
 
                 return new HarmonyAnalysisResponseDto
                 {
@@ -51,33 +52,9 @@ public class HarmonyAnalysisService : IHarmonyAnalysisService
         });
     }
 
-    private AnalysisResult GenerateAnalysisResult(IReadOnlyList<VerticalSlice> slices)
+    private static AnalysisResult BuildAnalysisResult(HarmonyCheckResult checkResult)
     {
-        var positions = new List<AnaysisResultPosition>();
-        int pos = 1;
-        var emptyNotes = Array.Empty<MusicXmlNotePosition>();
-        int totalMistakes = 0;
-
-        foreach (var command in _checkCommands)
-        {
-            var mistakes = command.Execute(slices);
-            if (mistakes.Count > 0)
-            {
-                totalMistakes += mistakes.Count;
-                positions.Add(new AnaysisResultPosition
-                {
-                    Position = pos++,
-                    Title = command.Title,
-                    Feedback = command.Feedback,
-                    Severity = command.Severity,
-                    RelatedNotes = emptyNotes
-                });
-            }
-        }
-
-        double score = totalMistakes > 0
-            ? Math.Max(0, 75 - totalMistakes * 10)
-            : Math.Round(_random.NextDouble() * 100, 2);
+        double score = 100 - checkResult.TotalMistakeCount * 5;
         var overallFeedback = score >= 80
             ? "Отличная работа! Гармонизация выполнена на высоком уровне."
             : score >= 60
@@ -88,7 +65,7 @@ public class HarmonyAnalysisService : IHarmonyAnalysisService
         {
             Score = score,
             Feedback = overallFeedback,
-            Positions = positions
+            Positions = checkResult.Positions
         };
     }
 }

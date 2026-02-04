@@ -1,5 +1,12 @@
+export enum ExerciseType {
+  Basic = 0,
+  Advanced = 1,
+  Full = 2
+}
+
 export interface HarmonyAnalysisRequest {
   musicXmlContent: string;
+  exerciseType?: ExerciseType;
 }
 
 export interface HarmonyAnalysisResponse {
