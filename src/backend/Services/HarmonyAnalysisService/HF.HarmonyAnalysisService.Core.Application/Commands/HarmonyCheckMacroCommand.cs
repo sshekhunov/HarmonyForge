@@ -1,3 +1,4 @@
+using System.Threading;
 using HF.HarmonyAnalysisService.Core.Domain.Entities;
 using HF.HarmonyAnalysisService.Core.Domain.Interfaces;
 
@@ -14,26 +15,49 @@ public class HarmonyCheckMacroCommand
 
     public HarmonyCheckResult Execute(IReadOnlyList<VerticalSlice> slices)
     {
+        var count = _commands.Count;
+        var results = new (IHarmonyCheckCommand Command, IReadOnlyList<(int MeasureIndex, int StaffEntryIndex)> Mistakes)?[count];
+        using var countdown = new CountdownEvent(count);
+
+        for (var i = 0; i < count; i++)
+        {
+            var index = i;
+            var command = _commands[i];
+            Task.Run(() =>
+            {
+                try
+                {
+                    var mistakes = command.Execute(slices);
+                    results[index] = (command, mistakes);
+                }
+                finally
+                {
+                    countdown.Signal();
+                }
+            });
+        }
+
+        countdown.Wait();
+
         var positions = new List<AnaysisResultPosition>();
         int pos = 1;
         int totalMistakeCount = 0;
         var emptyNotes = Array.Empty<MusicXmlNotePosition>();
 
-        foreach (var command in _commands)
+        foreach (var result in results)
         {
-            var mistakes = command.Execute(slices);
-            if (mistakes.Count > 0)
+            if (result == null || result.Value.Mistakes.Count == 0)
+                continue;
+            var (command, mistakes) = result.Value;
+            totalMistakeCount += mistakes.Count;
+            positions.Add(new AnaysisResultPosition
             {
-                totalMistakeCount += mistakes.Count;
-                positions.Add(new AnaysisResultPosition
-                {
-                    Position = pos++,
-                    Title = command.Title,
-                    Feedback = command.Feedback,
-                    Severity = command.Severity,
-                    RelatedNotes = emptyNotes
-                });
-            }
+                Position = pos++,
+                Title = command.Title,
+                Feedback = command.Feedback,
+                Severity = command.Severity,
+                RelatedNotes = emptyNotes
+            });
         }
 
         return new HarmonyCheckResult
