@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36310.24
@@ -46,16 +46,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HF.LearningCourseService.Core.Application", "Services\LearningCourseService\HF.LearningCourseService.Core.Application\HF.LearningCourseService.Core.Application.csproj", "{DBABA859-68A3-44E9-9C42-31A73E57992F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HF.LearningCourseService.Infrastructure.DataAccess", "Services\LearningCourseService\HF.LearningCourseService.Infrastructure.DataAccess\HF.LearningCourseService.Infrastructure.DataAccess.csproj", "{29BCB218-ECF9-46C9-B952-8E3E42F87ECB}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TelegramBotService", "TelegramBotService", "{802CC815-B064-4810-BB25-24C49A2EB919}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HF.TelegramBotService.Host.Webhook", "Services\TelegramBotService\HF.TelegramBotService.Host.Webhook\HF.TelegramBotService.Host.Webhook.csproj", "{D5786652-5447-459B-B766-26AE6DE2429D}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HF.TelegramBotService.Core.Domain", "Services\TelegramBotService\HF.TelegramBotService.Core.Domain\HF.TelegramBotService.Core.Domain.csproj", "{052030F1-0208-4E70-AD89-504DA5ABA2A8}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HF.TelegramBotService.Core.Application", "Services\TelegramBotService\HF.TelegramBotService.Core.Application\HF.TelegramBotService.Core.Application.csproj", "{B5BCBD67-6EF2-4C28-8179-856C3198DF86}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HF.TelegramBotService.Infrastructure.DataAccess", "Services\TelegramBotService\HF.TelegramBotService.Infrastructure.DataAccess\HF.TelegramBotService.Infrastructure.DataAccess.csproj", "{D67BB869-B7A9-45FC-A260-F66F5CEC871A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -127,22 +117,6 @@ Global
 		{29BCB218-ECF9-46C9-B952-8E3E42F87ECB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{29BCB218-ECF9-46C9-B952-8E3E42F87ECB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{29BCB218-ECF9-46C9-B952-8E3E42F87ECB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D5786652-5447-459B-B766-26AE6DE2429D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D5786652-5447-459B-B766-26AE6DE2429D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D5786652-5447-459B-B766-26AE6DE2429D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D5786652-5447-459B-B766-26AE6DE2429D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{052030F1-0208-4E70-AD89-504DA5ABA2A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{052030F1-0208-4E70-AD89-504DA5ABA2A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{052030F1-0208-4E70-AD89-504DA5ABA2A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{052030F1-0208-4E70-AD89-504DA5ABA2A8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B5BCBD67-6EF2-4C28-8179-856C3198DF86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B5BCBD67-6EF2-4C28-8179-856C3198DF86}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B5BCBD67-6EF2-4C28-8179-856C3198DF86}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B5BCBD67-6EF2-4C28-8179-856C3198DF86}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D67BB869-B7A9-45FC-A260-F66F5CEC871A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D67BB869-B7A9-45FC-A260-F66F5CEC871A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D67BB869-B7A9-45FC-A260-F66F5CEC871A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D67BB869-B7A9-45FC-A260-F66F5CEC871A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -169,11 +143,6 @@ Global
 		{0895AAA2-0416-4833-9C63-094BF39E644C} = {F1B62427-F763-47F0-8F83-D11F7D56CF33}
 		{DBABA859-68A3-44E9-9C42-31A73E57992F} = {F1B62427-F763-47F0-8F83-D11F7D56CF33}
 		{29BCB218-ECF9-46C9-B952-8E3E42F87ECB} = {F1B62427-F763-47F0-8F83-D11F7D56CF33}
-		{802CC815-B064-4810-BB25-24C49A2EB919} = {36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}
-		{D5786652-5447-459B-B766-26AE6DE2429D} = {802CC815-B064-4810-BB25-24C49A2EB919}
-		{052030F1-0208-4E70-AD89-504DA5ABA2A8} = {802CC815-B064-4810-BB25-24C49A2EB919}
-		{B5BCBD67-6EF2-4C28-8179-856C3198DF86} = {802CC815-B064-4810-BB25-24C49A2EB919}
-		{D67BB869-B7A9-45FC-A260-F66F5CEC871A} = {802CC815-B064-4810-BB25-24C49A2EB919}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {AD9E07FC-8DD4-4CBE-837D-C9B63E4A9CA6}
