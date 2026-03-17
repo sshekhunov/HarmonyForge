@@ -7,12 +7,12 @@ interface IOSMDInstance {
   render(): void;
 }
 
-/** OSMD internal: GraphicSheet has GetNearestNote; click coords must be in sheet units (px/10/zoom) */
+/** OSMD internal: GraphicSheet has MeasureList and notes with getNoteheadSVGs for exact notehead hit-test */
 interface IOsmdWithGraphic extends IOSMDInstance {
   GraphicSheet?: {
-    GetNearestNote(clickPos: { x: number; y: number }, maxDist: { x: number; y: number }): { sourceNote?: { noteheadColor?: string } } | null;
+    MeasureList?: unknown[][];
+    measureList?: unknown[][];
   };
-  Zoom?: number;
 }
 
 async function createOsmd(container: HTMLElement): Promise<IOSMDInstance> {
@@ -101,20 +101,46 @@ export function ScoreEditor() {
   const handleOsmdClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const osmd = osmdRef.current as IOsmdWithGraphic | null;
-      const container = containerRef.current;
-      if (!osmd || !container) return;
-      const raw = osmd as unknown as { GraphicSheet?: { GetNearestNote: (a: { x: number; y: number }, b: { x: number; y: number }) => unknown }; graphic?: { GetNearestNote: (a: { x: number; y: number }, b: { x: number; y: number }) => unknown }; Zoom?: number };
+      if (!osmd) return;
+      const raw = osmd as unknown as {
+        GraphicSheet?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
+        graphic?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
+      };
       const graphic = raw.GraphicSheet ?? raw.graphic;
-      if (!graphic?.GetNearestNote) return;
+      const measureList = graphic?.MeasureList ?? graphic?.measureList;
+      if (!Array.isArray(measureList)) return;
 
-      const rect = container.getBoundingClientRect();
-      const zoom = Number(raw.Zoom) || 1;
-      const unitScale = 10 * zoom;
-      const contentX = e.clientX - rect.left + container.scrollLeft;
-      const contentY = e.clientY - rect.top + container.scrollTop;
-      const sheetPoint = { x: contentX / unitScale, y: contentY / unitScale };
-      const maxDist = { x: 15, y: 15 };
-      const note = graphic.GetNearestNote(sheetPoint, maxDist) as { sourceNote?: { noteheadColor?: string } } | null;
+      const target = e.target as Node;
+      type NoteWithNoteheads = { sourceNote?: { noteheadColor?: string }; getNoteheadSVGs?: () => HTMLElement[] };
+      let clickedNote: NoteWithNoteheads | null = null;
+
+      for (const measureArray of measureList) {
+        if (!Array.isArray(measureArray)) continue;
+        for (const measure of measureArray) {
+          const m = measure as { staffEntries?: { graphicalVoiceEntries?: { notes?: unknown[] }[] }[] };
+          for (const staffEntry of m.staffEntries ?? []) {
+            for (const voiceEntry of staffEntry.graphicalVoiceEntries ?? []) {
+              for (const note of voiceEntry.notes ?? []) {
+                const n = note as NoteWithNoteheads;
+                const noteheads = n.getNoteheadSVGs?.();
+                if (noteheads?.length) {
+                  for (const el of noteheads) {
+                    if (el === target || el.contains(target)) {
+                      clickedNote = n;
+                      break;
+                    }
+                  }
+                  if (clickedNote) break;
+                }
+              }
+              if (clickedNote) break;
+            }
+            if (clickedNote) break;
+          }
+          if (clickedNote) break;
+        }
+        if (clickedNote) break;
+      }
 
       // Clear previous selection
       if (selectedNoteRef.current?.sourceNote && 'noteheadColor' in selectedNoteRef.current.sourceNote) {
@@ -122,9 +148,9 @@ export function ScoreEditor() {
       }
       selectedNoteRef.current = null;
 
-      if (note?.sourceNote) {
-        note.sourceNote.noteheadColor = '#c00';
-        selectedNoteRef.current = note;
+      if (clickedNote?.sourceNote) {
+        clickedNote.sourceNote.noteheadColor = '#c00';
+        selectedNoteRef.current = clickedNote;
       }
 
       osmd.render();
