@@ -7,7 +7,8 @@ import {
 } from '../helpers/noteSelection';
 import {
   selectionStoreClearSelection,
-  selectionStoreConsumePendingLocator,
+  selectionStoreClearPendingLocator,
+  selectionStorePeekPendingLocator,
   selectionStoreSetMeasureList,
   selectionStoreSetSelectedNote,
 } from '../helpers/selectionStore';
@@ -51,6 +52,18 @@ export function ScoreEditor() {
   const selectedNoteRef = useRef<GraphicNote | null>(null);
   const [musicXmlFile, setMusicXmlFile] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pendingScrollRef = useRef<{ top: number; left: number } | null>(null);
+
+  const restoreScrollBurst = useCallback((scroller: HTMLDivElement, target: { top: number; left: number }) => {  
+    let framesLeft = 12;
+    const tick = () => {
+      scroller.scrollTop = target.top;
+      scroller.scrollLeft = target.left;
+      framesLeft--;
+      if (framesLeft > 0) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, []);
 
   const initOsmd = useCallback(async () => {
     if (!containerRef.current) return;
@@ -75,20 +88,38 @@ export function ScoreEditor() {
       try {
         await osmdRef.current.load(xml);
         selectedNoteRef.current = null;
-        selectionStoreClearSelection();
+        // Only clear selection if we are not going to restore it.
+        if (!selectionStorePeekPendingLocator()) selectionStoreClearSelection();
         osmdRef.current.render();
 
         const measureList = getMeasureList(osmdRef.current);
         selectionStoreSetMeasureList(measureList);
 
-        const pending = selectionStoreConsumePendingLocator();
+        const pending = selectionStorePeekPendingLocator();
         if (pending && measureList) {
-          const highlighted = highlightNoteByLocator(measureList, pending, '#c00');
-          if (highlighted) {
-            selectedNoteRef.current = highlighted;
-            selectionStoreSetSelectedNote(highlighted);
-          }
-          osmdRef.current.render();
+          let attemptsLeft = 10;
+          const tryRehighlight = () => {
+            const ml = getMeasureList(osmdRef.current);
+            if (!ml) return;
+            const highlighted = highlightNoteByLocator(ml, pending, '#c00');
+            if (highlighted) {
+              selectedNoteRef.current = highlighted;
+              selectionStoreSetSelectedNote(highlighted);
+              selectionStoreClearPendingLocator();
+              osmdRef.current?.render();
+              return;
+            }
+            attemptsLeft--;
+            if (attemptsLeft > 0) requestAnimationFrame(tryRehighlight);
+          };
+          tryRehighlight();
+        }
+
+        const scroller = containerRef.current;
+        const pendingScroll = pendingScrollRef.current;
+        if (scroller && pendingScroll) {
+          restoreScrollBurst(scroller, pendingScroll);
+          pendingScrollRef.current = null;
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load score');
@@ -105,6 +136,8 @@ export function ScoreEditor() {
     (e: React.MouseEvent<HTMLDivElement>) => {
       const osmd = osmdRef.current as IOsmdWithGraphic | null;
       if (!osmd || !containerRef.current) return;
+      const scroller = containerRef.current;
+      const scrollBefore = { top: scroller.scrollTop, left: scroller.scrollLeft };
       const measureList = getMeasureList(osmd);
       if (!measureList) return;
 
@@ -127,24 +160,37 @@ export function ScoreEditor() {
       }
 
       osmd.render();
+      restoreScrollBurst(scroller, scrollBefore);
     },
-    []
+    [restoreScrollBurst]
   );
 
   return (
     <div className="score-editor">
       <TopPanel
         musicXmlFile={musicXmlFile}
-        setMusicXmlFile={setMusicXmlFile}
+        setMusicXmlFile={(xml) => {          
+          if (musicXmlFile && containerRef.current) {
+            pendingScrollRef.current = {
+              top: containerRef.current.scrollTop,
+              left: containerRef.current.scrollLeft,
+            };
+          } else {
+            pendingScrollRef.current = null;
+          }
+          setMusicXmlFile(xml);
+        }}
       />
-      {error && <div className="score-editor__error" role="alert">{error}</div>}
-      <div
-        ref={containerRef}
-        className="score-editor__osmd"
-        onClick={handleOsmdClick}
-        role="application"
-        aria-label="Score: click a note to select it"
-      />
+      <div className="score-editor__viewport">
+        {error && <div className="score-editor__error" role="alert">{error}</div>}
+        <div
+          ref={containerRef}
+          className="score-editor__osmd"
+          onClick={handleOsmdClick}
+          role="application"
+          aria-label="Score: click a note to select it"
+        />
+      </div>
     </div>
   );
 }

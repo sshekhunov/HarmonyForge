@@ -40,10 +40,13 @@ export function selectionStoreSetPendingLocator(locator: SelectedNoteLocator | n
   emit();
 }
 
-export function selectionStoreConsumePendingLocator(): SelectedNoteLocator | null {
-  const v = state.pendingLocator;
+export function selectionStorePeekPendingLocator(): SelectedNoteLocator | null {
+  return state.pendingLocator;
+}
+
+export function selectionStoreClearPendingLocator() {
   state.pendingLocator = null;
-  return v;
+  emit();
 }
 
 function getSnapshot() {

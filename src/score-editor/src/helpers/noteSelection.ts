@@ -294,21 +294,34 @@ export function highlightNoteByLocator(
   color: string
 ): GraphicNote | null {
   const targetMeasureIndex = locator.measureIndex;
-  const targetStaffId = locator.staffNumber - 1; // best-effort for comparing to OSMD staff ids
-  let idx = 0;
-  let highlighted: GraphicNote | null = null;
-  const { iterateNotes } = getMeasureListGraph(measureList);
-  iterateNotes((note) => {
-    const sn = note.sourceNote as unknown;
-    if (!sn || note.sourceNote?.isRest?.()) return;
-    if (getMeasureIndexFromSourceNote(sn) !== targetMeasureIndex) return;
-    if (getStaffIdFromSourceNote(sn) !== targetStaffId) return;
-    if (locator.voice && getVoiceIdFromSourceNote(sn) !== locator.voice) return;
-    if (idx === locator.indexInMeasure && note.sourceNote) {
-      note.sourceNote.noteheadColor = color;
-      highlighted = note;
+  const staffCandidates = Array.from(new Set([locator.staffNumber, 1, 2].filter((n) => n >= 1)));
+
+  const tryHighlight = (ignoreVoice: boolean): GraphicNote | null => {
+    for (const staffNumber of staffCandidates) {
+      let idx = 0;
+      let highlighted: GraphicNote | null = null;
+      const { iterateNotes } = getMeasureListGraph(measureList);
+      iterateNotes((note) => {
+        const sn = note.sourceNote as unknown;
+        if (highlighted) return;
+        if (!sn || note.sourceNote?.isRest?.()) return;
+        if (getMeasureIndexFromSourceNote(sn) !== targetMeasureIndex) return;
+        const staffId = getStaffIdFromSourceNote(sn);
+        if (staffId === null) return;
+        const noteStaffNumber = toMusicXmlStaffNumber(staffId);
+        if (noteStaffNumber !== staffNumber) return;
+        if (!ignoreVoice && locator.voice && getVoiceIdFromSourceNote(sn) !== locator.voice) return;
+        if (idx === locator.indexInMeasure && note.sourceNote) {
+          note.sourceNote.noteheadColor = color;
+          highlighted = note;
+          return;
+        }
+        idx++;
+      });
+      if (highlighted) return highlighted;
     }
-    idx++;
-  });
-  return highlighted;
+    return null;
+  };
+
+  return tryHighlight(false) ?? tryHighlight(true);
 }
