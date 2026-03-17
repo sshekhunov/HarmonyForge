@@ -33,6 +33,36 @@
   cursor: not-allowed;
 }
 
+.score-editor__separator {
+  width: 1px;
+  align-self: stretch;
+  background: #ccc;
+  margin: 0 0.25rem;
+}
+
+.score-editor__accidentals {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.score-editor__btn--symbol {
+  min-width: 2.25rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.4rem 0.5rem;
+}
+
+.score-editor__btn--symbol.score-editor__btn--clear {
+  min-width: 2.25rem;
+  padding: 0.4rem 0.5rem;
+}
+
+.score-editor__btn--clear .score-editor__clear-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  display: inline-block;
+}
+
 .score-editor__file-input {
   position: absolute;
   width: 0;
