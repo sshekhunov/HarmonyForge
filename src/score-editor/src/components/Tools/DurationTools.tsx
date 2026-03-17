@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSelectionSnapshot } from '../../helpers/selectionStore';
+import { selectionStoreSetPendingLocator } from '../../helpers/selectionStore';
+import { applyDuration } from '../../helpers/durationHelpers';
 
 type DurationValue = 'whole' | 'half' | 'quarter' | 'eighth' | '16th' | '32nd' | '64th';
 
@@ -55,8 +57,17 @@ function durationIdFromSelectedNote(selectedNote: unknown): DurationValue | null
   return null;
 }
 
-export function DurationTools() {
-  const { selectedNote } = useSelectionSnapshot() as { selectedNote?: unknown };
+type Props = {
+  musicXmlFile: string | null;
+  setMusicXmlFile: (xml: string) => void;
+};
+
+export function DurationTools({ musicXmlFile, setMusicXmlFile }: Props) {
+  const { hasSelection, locator, selectedNote } = useSelectionSnapshot() as {
+    hasSelection?: boolean;
+    locator?: unknown;
+    selectedNote?: unknown;
+  };
   const [manualSelected, setManualSelected] = useState<DurationValue>('quarter');
   const byId = useMemo(() => new Map(DURATIONS.map((d) => [d.id, d])), []);
   const selectedFromNote = durationIdFromSelectedNote(selectedNote);
@@ -72,8 +83,17 @@ export function DurationTools() {
             key={def.id}
             type="button"
             className={`score-editor__btn score-editor__btn--symbol score-editor__btn--toggle${isSelected ? ' is-active' : ''}`}
-            onClick={() => setManualSelected(def.id)}
+            onClick={() => {
+              setManualSelected(def.id);
+              if (!musicXmlFile) return;
+              if (!locator) return;
+              const newXml = applyDuration(musicXmlFile, locator as any, def.id);
+              if (!newXml) return;
+              selectionStoreSetPendingLocator(locator as any);
+              setMusicXmlFile(newXml);
+            }}
             aria-pressed={isSelected}
+            disabled={!hasSelection}
             title={def.label}
             aria-label={`Set duration to ${def.label.toLowerCase()}`}
           >

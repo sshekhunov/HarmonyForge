@@ -15,7 +15,7 @@ export function TopPanel({
     <div className="score-editor__panel">
       <FileTools musicXmlFile={musicXmlFile} setMusicXmlFile={setMusicXmlFile} />
       <span className="score-editor__separator" aria-hidden />
-      <DurationTools />
+      <DurationTools musicXmlFile={musicXmlFile} setMusicXmlFile={setMusicXmlFile} />
       <span className="score-editor__separator" aria-hidden />
       <AccidentalTools musicXmlFile={musicXmlFile} setMusicXmlFile={setMusicXmlFile} />
     </div>
