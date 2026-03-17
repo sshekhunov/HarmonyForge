@@ -73,6 +73,16 @@
   gap: 0.25rem;
 }
 
+.score-editor__durations {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.score-editor__btn--toggle.is-active {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
 .score-editor__btn--symbol {
   min-width: 2.25rem;
   font-size: 1.25rem;
