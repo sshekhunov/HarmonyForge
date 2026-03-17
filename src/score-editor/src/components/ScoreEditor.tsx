@@ -3,8 +3,8 @@ import {
   clearNoteHighlight,
   findClickedNote,
   highlightNoteByLocator,
-  type GraphicNote,
 } from '../helpers/noteSelection';
+import type { GraphicNote } from '../models/osmd';
 import {
   selectionStoreClearSelection,
   selectionStoreClearPendingLocator,

@@ -3,19 +3,8 @@
  * Works with measure-first traversal to match MusicXML note order.
  */
 
-export interface GraphicNote {
-  sourceNote?: {
-    noteheadColor?: string;
-    isRest?: () => boolean;
-    SourceMeasure?: { measureListIndex?: number; MeasureListIndex?: number };
-    ParentStaff?: { Id?: number; idInMusicSheet?: number; ParentInstrument?: { IdString?: string; idString?: string } };
-    ParentVoiceEntry?: { ParentVoice?: { VoiceId?: number | string; voiceId?: number | string } };
-  };
-  getNoteheadSVGs?: () => HTMLElement[];
-  parentVoiceEntry?: { notes?: unknown[] };
-}
-
-export type MeasureList = unknown[][];
+import type { GraphicNote, MeasureList } from '../models/osmd';
+import type { NoteLocator } from '../models/musicXml';
 
 function getMeasureListGraph(measureList: MeasureList): {
   numArrays: number;
@@ -200,18 +189,10 @@ function getVoiceIdFromSourceNote(sourceNote: unknown): string | undefined {
   return undefined;
 }
 
-export type SelectedNoteLocator = {
-  partId?: string;
-  measureIndex: number;
-  staffNumber: number;
-  voice?: string;
-  indexInMeasure: number;
-};
-
 export function getSelectedNoteLocator(
   measureList: MeasureList,
   selectedSourceNote: unknown
-): SelectedNoteLocator | null {
+): NoteLocator | null {
   const measureIndex = getMeasureIndexFromSourceNote(selectedSourceNote);
   const staffId = getStaffIdFromSourceNote(selectedSourceNote);
   if (measureIndex === null || staffId === null) return null;
@@ -246,7 +227,7 @@ export function getSelectedNoteLocator(
 
 export function highlightNoteByLocator(
   measureList: MeasureList,
-  locator: SelectedNoteLocator,
+  locator: NoteLocator,
   color: string
 ): GraphicNote | null {
   const targetMeasureIndex = locator.measureIndex;

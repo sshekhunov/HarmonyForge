@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 
-import { getSelectedNoteLocator, type GraphicNote, type MeasureList, type SelectedNoteLocator } from './noteSelection';
+import { getSelectedNoteLocator } from './noteSelection';
+import type { GraphicNote, MeasureList } from '../models/osmd';
+import type { NoteLocator } from '../models/musicXml';
 
 type State = {
   measureList: MeasureList | null;
   selectedNote: GraphicNote | null;
-  pendingLocator: SelectedNoteLocator | null;
+  pendingLocator: NoteLocator | null;
 };
 
 const state: State = {
@@ -35,12 +37,12 @@ export function selectionStoreClearSelection() {
   emit();
 }
 
-export function selectionStoreSetPendingLocator(locator: SelectedNoteLocator | null) {
+export function selectionStoreSetPendingLocator(locator: NoteLocator | null) {
   state.pendingLocator = locator;
   emit();
 }
 
-export function selectionStorePeekPendingLocator(): SelectedNoteLocator | null {
+export function selectionStorePeekPendingLocator(): NoteLocator | null {
   return state.pendingLocator;
 }
 

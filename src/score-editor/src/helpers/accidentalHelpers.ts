@@ -1,19 +1,9 @@
 /**
- * MusicXML accidental helpers: apply alter and accidental to the nth pitch note.
+ * MusicXML accidental helpers.
  * Uses document namespace when present for proper MusicXML handling.
  */
 
-export type NoteLocator = {
-  partId?: string;
-  /** 0-based index of <measure> within the target <part> */
-  measureIndex: number;
-  /** MusicXML staff number (typically 1-based). */
-  staffNumber: number;
-  /** Optional MusicXML voice number/string. */
-  voice?: string;
-  /** Pitch-note index within the filtered measure/staff(/voice). */
-  indexInMeasure: number;
-};
+import type { NoteLocator } from '../models/musicXml';
 
 /**
  * Applies an accidental using a robust locator:
