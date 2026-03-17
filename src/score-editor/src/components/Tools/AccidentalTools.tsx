@@ -1,28 +1,32 @@
+import { applyAccidentalToXml } from '../../helpers/accidentalHelpers';
+import { useSelectionSnapshot, selectionStoreSetPendingHighlightIndex } from '../../helpers/selectionStore';
+
 type Props = {
-  hasSelection: boolean;
-  onNatural: () => void;
-  onSharp: () => void;
-  onFlat: () => void;
-  onDoubleSharp: () => void;
-  onDoubleFlat: () => void;
-  onClear: () => void;
+  musicXmlFile: string | null;
+  setMusicXmlFile: (xml: string) => void;
 };
 
 export function AccidentalTools({
-  hasSelection,
-  onNatural,
-  onSharp,
-  onFlat,
-  onDoubleSharp,
-  onDoubleFlat,
-  onClear,
+  musicXmlFile,
+  setMusicXmlFile,
 }: Props) {
+  const { hasSelection, selectedNoteIndex } = useSelectionSnapshot();
+
+  const apply = (alter: number, accidentalName: string) => {
+    if (!musicXmlFile) return;
+    if (selectedNoteIndex === null) return;
+    const newXml = applyAccidentalToXml(musicXmlFile, selectedNoteIndex, alter, accidentalName);
+    if (!newXml) return;
+    selectionStoreSetPendingHighlightIndex(selectedNoteIndex);
+    setMusicXmlFile(newXml);
+  };
+
   return (
     <span className="score-editor__accidentals" role="group" aria-label="Change accidental">
       <button
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
-        onClick={onNatural}
+        onClick={() => apply(0, 'natural')}
         disabled={!hasSelection}
         title="Natural (♮)"
         aria-label="Set note to natural"
@@ -32,7 +36,7 @@ export function AccidentalTools({
       <button
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
-        onClick={onSharp}
+        onClick={() => apply(1, 'sharp')}
         disabled={!hasSelection}
         title="Sharp (♯)"
         aria-label="Set note to sharp"
@@ -42,7 +46,7 @@ export function AccidentalTools({
       <button
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
-        onClick={onFlat}
+        onClick={() => apply(-1, 'flat')}
         disabled={!hasSelection}
         title="Flat (♭)"
         aria-label="Set note to flat"
@@ -52,7 +56,7 @@ export function AccidentalTools({
       <button
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
-        onClick={onDoubleSharp}
+        onClick={() => apply(2, 'double-sharp')}
         disabled={!hasSelection}
         title="Double sharp (𝄪)"
         aria-label="Set note to double sharp"
@@ -62,7 +66,7 @@ export function AccidentalTools({
       <button
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
-        onClick={onDoubleFlat}
+        onClick={() => apply(-2, 'double-flat')}
         disabled={!hasSelection}
         title="Double flat (𝄫)"
         aria-label="Set note to double flat"
@@ -72,7 +76,7 @@ export function AccidentalTools({
       <button
         type="button"
         className="score-editor__btn score-editor__btn--symbol score-editor__btn--clear"
-        onClick={onClear}
+        onClick={() => apply(0, '')}
         disabled={!hasSelection}
         title="Remove accidental (note follows key signature)"
         aria-label="Remove accidental so note follows key signature"
