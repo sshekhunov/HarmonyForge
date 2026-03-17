@@ -53,7 +53,7 @@ function getMeasureListGraph(measureList: MeasureList): {
 /**
  * Builds a map from DOM elements (notehead SVGs) to the graphic notes they belong to.
  */
-export function buildElementToNotes(measureList: MeasureList): Map<Element, GraphicNote[]> {
+function buildElementToNotes(measureList: MeasureList): Map<Element, GraphicNote[]> {
   const map = new Map<Element, GraphicNote[]>();
   const { iterateNotes } = getMeasureListGraph(measureList);
   iterateNotes((note) => {
@@ -73,7 +73,7 @@ export function buildElementToNotes(measureList: MeasureList): Map<Element, Grap
  * Finds the graphic note at the given client coordinates.
  * For chords, picks the note whose notehead is closest to the click (by vertical position).
  */
-export function findNoteAtPoint(
+function findNoteAtPoint(
   measureList: MeasureList,
   clientX: number,
   clientY: number
@@ -123,7 +123,7 @@ export function findNoteAtPoint(
 /**
  * Fallback: walk up from a DOM node to find a note element in the map.
  */
-export function findNoteFromNode(
+function findNoteFromNode(
   elementToNotes: Map<Element, GraphicNote[]>,
   startNode: Node
 ): GraphicNote | null {
@@ -157,56 +157,12 @@ export function findClickedNote(
 }
 
 /**
- * Returns the pitch-note index (measure-first order) of the given source note, or null if not found.
- */
-export function getSelectedNoteIndex(
-  measureList: MeasureList,
-  selectedSourceNote: { isRest?: () => boolean } | null | undefined
-): number | null {
-  if (!selectedSourceNote) return null;
-  let index = 0;
-  let found: number | null = null;
-  const { iterateNotes } = getMeasureListGraph(measureList);
-  iterateNotes((note) => {
-    if (note.sourceNote === selectedSourceNote) {
-      found = index;
-      return;
-    }
-    if (note.sourceNote && !note.sourceNote.isRest?.()) index++;
-  });
-  return found;
-}
-
-/**
  * Clears the highlight from a previously selected note.
  */
 export function clearNoteHighlight(note: GraphicNote | null): void {
   if (note?.sourceNote && 'noteheadColor' in note.sourceNote) {
     delete note.sourceNote.noteheadColor;
   }
-}
-
-/**
- * Applies highlight color to the note at the given pitch-note index (measure-first).
- * Returns the note that was highlighted, or null.
- */
-export function highlightNoteAtIndex(
-  measureList: MeasureList,
-  noteIndex: number,
-  color: string
-): GraphicNote | null {
-  let idx = 0;
-  let highlighted: GraphicNote | null = null;
-  const { iterateNotes } = getMeasureListGraph(measureList);
-  iterateNotes((note) => {
-    if (note.sourceNote?.isRest?.()) return;
-    if (idx === noteIndex && note.sourceNote) {
-      note.sourceNote.noteheadColor = color;
-      highlighted = note;
-    }
-    idx++;
-  });
-  return highlighted;
 }
 
 function getMeasureIndexFromSourceNote(sourceNote: unknown): number | null {
