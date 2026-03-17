@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSelectionSnapshot } from '../../helpers/selectionStore';
 
 type DurationValue = 'whole' | 'half' | 'quarter' | 'eighth' | '16th' | '32nd' | '64th';
 
@@ -18,9 +19,48 @@ const DURATIONS: DurationDef[] = [
   { id: '64th', label: 'Sixty-fourth', symbol: '𝅘𝅥𝅱' },
 ];
 
+function durationIdFromSelectedNote(selectedNote: unknown): DurationValue | null {
+  const sn = selectedNote as {
+    sourceNote?: unknown;
+  };
+  const source = sn?.sourceNote as any;
+  if (!source) return null;
+
+  const typeRaw = source.NoteTypeXml ?? source.noteTypeXml;
+  if (typeof typeRaw === 'string') {
+    const t = typeRaw.toLowerCase();
+    if (t.includes('whole')) return 'whole';
+    if (t.includes('half')) return 'half';
+    if (t.includes('quarter')) return 'quarter';
+    if (t.includes('eighth')) return 'eighth';
+    if (t.includes('sixteenth') || t.includes('16')) return '16th';
+    if (t.includes('thirty') || t.includes('32')) return '32nd';
+    if (t.includes('sixty') || t.includes('64')) return '64th';
+  }
+
+  const frac = source.Length ?? source.TypeLength ?? null;
+  const rv = frac?.RealValue ?? frac?.realValue ?? null;
+  const v = typeof rv === 'number' && Number.isFinite(rv) ? rv : null;
+  if (v !== null) {
+    const eps = 1e-6;
+    if (Math.abs(v - 1) < eps) return 'whole';
+    if (Math.abs(v - 0.5) < eps) return 'half';
+    if (Math.abs(v - 0.25) < eps) return 'quarter';
+    if (Math.abs(v - 0.125) < eps) return 'eighth';
+    if (Math.abs(v - 0.0625) < eps) return '16th';
+    if (Math.abs(v - 0.03125) < eps) return '32nd';
+    if (Math.abs(v - 0.015625) < eps) return '64th';
+  }
+
+  return null;
+}
+
 export function DurationTools() {
-  const [selected, setSelected] = useState<DurationValue>('quarter');
+  const { selectedNote } = useSelectionSnapshot() as { selectedNote?: unknown };
+  const [manualSelected, setManualSelected] = useState<DurationValue>('quarter');
   const byId = useMemo(() => new Map(DURATIONS.map((d) => [d.id, d])), []);
+  const selectedFromNote = durationIdFromSelectedNote(selectedNote);
+  const selected = selectedFromNote ?? manualSelected;
 
   return (
     <span className="score-editor__durations" role="group" aria-label="Note duration">
@@ -32,7 +72,7 @@ export function DurationTools() {
             key={def.id}
             type="button"
             className={`score-editor__btn score-editor__btn--symbol score-editor__btn--toggle${isSelected ? ' is-active' : ''}`}
-            onClick={() => setSelected(def.id)}
+            onClick={() => setManualSelected(def.id)}
             aria-pressed={isSelected}
             title={def.label}
             aria-label={`Set duration to ${def.label.toLowerCase()}`}

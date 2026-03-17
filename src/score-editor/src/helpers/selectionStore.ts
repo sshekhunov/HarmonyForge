@@ -60,6 +60,7 @@ function getSnapshot() {
   return {
     hasSelection,
     locator,
+    selectedNote: state.selectedNote,
   };
 }
 
