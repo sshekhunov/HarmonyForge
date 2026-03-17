@@ -76,34 +76,47 @@ function findNoteAtPoint(
     if (notes.length === 1) return notes[0] ?? null;
 
     const chordNotes = notes;
+    // OSMD can return chord noteheads as a shared array on each note.
+    // If the array length matches the number of chord notes, we can map by index.
+    const sharedHeads = chordNotes[0]?.getNoteheadSVGs?.() ?? [];
+    if (sharedHeads.length === chordNotes.length) {
+      let bestIdx = 0;
+      let bestDist = Number.POSITIVE_INFINITY;
+      for (let i = 0; i < sharedHeads.length; i++) {
+        const r = sharedHeads[i]?.getBoundingClientRect();
+        if (!r) continue;
+        const centerY = r.top + r.height / 2;
+        const d = Math.abs(clientY - centerY);
+        if (d < bestDist) {
+          bestDist = d;
+          bestIdx = i;
+        }
+      }
+      return chordNotes[bestIdx] ?? chordNotes[0] ?? null;
+    }
+
+    // Fallback: estimate per note from its first notehead rect.
     const withRect = chordNotes
       .map((note) => {
-        const el = note.getNoteheadSVGs?.()?.[0];
-        const r = el?.getBoundingClientRect();
+        const head = note.getNoteheadSVGs?.()?.[0];
+        const r = head?.getBoundingClientRect();
         return {
           note,
-          top: r?.top ?? 0,
-          height: r?.height ?? 0,
-          centerY: r ? r.top + r.height / 2 : 0,
+          centerY: r ? r.top + r.height / 2 : Number.NaN,
         };
       })
-      .filter((x) => x.height > 0);
+      .filter((x) => Number.isFinite(x.centerY));
     if (withRect.length === 0) return chordNotes[0] ?? null;
-
-    const sortedByTop = [...withRect].sort((a, b) => a.top - b.top);
-    const chordTop = Math.min(...sortedByTop.map((x) => x.top));
-    const chordBottom = Math.max(...sortedByTop.map((x) => x.top + x.height));
-    const chordHeight = chordBottom - chordTop;
-    const relY = clientY - chordTop;
-    let index = Math.min(
-      sortedByTop.length - 1,
-      Math.max(0, Math.floor((relY / (chordHeight || 1)) * sortedByTop.length))
-    );
-    const firstTop = sortedByTop[0]?.top;
-    const allSameTop =
-      firstTop !== undefined && sortedByTop.every((x) => x.top === firstTop);
-    if (allSameTop) index = sortedByTop.length - 1 - index;
-    return sortedByTop[index]?.note ?? chordNotes[0] ?? null;
+    let best = withRect[0]!;
+    let bestDist = Math.abs(clientY - best.centerY);
+    for (const cur of withRect.slice(1)) {
+      const d = Math.abs(clientY - cur.centerY);
+      if (d < bestDist) {
+        best = cur;
+        bestDist = d;
+      }
+    }
+    return best.note ?? chordNotes[0] ?? null;
   }
 
   return null;
