@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { applyAccidentalToXml } from '../helpers/accidentalHelpers';
+import {
+  clearNoteHighlight,
+  findClickedNote,
+  getSelectedNoteIndex,
+  highlightNoteAtIndex,
+  type GraphicNote,
+} from '../helpers/noteSelection';
 import './ScoreEditor.css';
 
 // OSMD: use interface because the package's UMD bundle export doesn't match its .d.ts
@@ -9,10 +17,18 @@ interface IOSMDInstance {
 
 /** OSMD internal: GraphicSheet has MeasureList and notes with getNoteheadSVGs for exact notehead hit-test */
 interface IOsmdWithGraphic extends IOSMDInstance {
-  GraphicSheet?: {
-    MeasureList?: unknown[][];
-    measureList?: unknown[][];
+  GraphicSheet?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
+  graphic?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
+}
+
+function getMeasureList(osmd: unknown): unknown[][] | null {
+  const raw = osmd as {
+    GraphicSheet?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
+    graphic?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
   };
+  const graphic = raw?.GraphicSheet ?? raw?.graphic;
+  const list = graphic?.MeasureList ?? graphic?.measureList;
+  return Array.isArray(list) ? list : null;
 }
 
 async function createOsmd(container: HTMLElement): Promise<IOSMDInstance> {
@@ -27,7 +43,7 @@ async function createOsmd(container: HTMLElement): Promise<IOSMDInstance> {
 export function ScoreEditor() {
   const containerRef = useRef<HTMLDivElement>(null);
   const osmdRef = useRef<IOSMDInstance | null>(null);
-  const selectedNoteRef = useRef<{ sourceNote?: { noteheadColor?: string } } | null>(null);
+  const selectedNoteRef = useRef<GraphicNote | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentXml, setCurrentXml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -100,121 +116,31 @@ export function ScoreEditor() {
     URL.revokeObjectURL(url);
   }, [currentXml]);
 
-  const getSelectedNoteIndex = useCallback((): number | null => {
-    const selected = selectedNoteRef.current?.sourceNote;
-    if (!selected || !currentXml) return null;
-    const raw = osmdRef.current as unknown as {
-      GraphicSheet?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
-      graphic?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
-    };
-    const graphic = raw?.GraphicSheet ?? raw?.graphic;
-    const measureList = graphic?.MeasureList ?? graphic?.measureList;
-    if (!Array.isArray(measureList)) return null;
-    const numArrays = measureList.length;
-    const numMeasures = Math.max(0, ...measureList.map((arr) => (Array.isArray(arr) ? arr.length : 0)));
-    let index = 0;
-    for (let measureIdx = 0; measureIdx < numMeasures; measureIdx++) {
-      for (let arrayIdx = 0; arrayIdx < numArrays; arrayIdx++) {
-        const measureArray = measureList[arrayIdx];
-        if (!Array.isArray(measureArray)) continue;
-        const measure = measureArray[measureIdx];
-        if (!measure) continue;
-        const m = measure as { staffEntries?: { graphicalVoiceEntries?: { notes?: unknown[] }[] }[] };
-        for (const staffEntry of m.staffEntries ?? []) {
-          for (const voiceEntry of staffEntry.graphicalVoiceEntries ?? []) {
-            for (const note of voiceEntry.notes ?? []) {
-              const n = note as { sourceNote?: { isRest?: () => boolean } };
-              if (n.sourceNote === selected) return index;
-              if (n.sourceNote && !n.sourceNote.isRest?.()) index++;
-            }
-          }
-        }
-      }
-    }
-    return null;
+  const getSelectedNoteIndexCallback = useCallback((): number | null => {
+    const measureList = getMeasureList(osmdRef.current);
+    if (!measureList || !currentXml) return null;
+    return getSelectedNoteIndex(measureList, selectedNoteRef.current?.sourceNote);
   }, [currentXml]);
 
   const applyAccidental = useCallback(
     async (alter: number, accidentalName: string) => {
-      const noteIndex = getSelectedNoteIndex();
+      const noteIndex = getSelectedNoteIndexCallback();
       if (noteIndex === null || currentXml === null) return;
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(currentXml, 'application/xml');
-      const ns = doc.documentElement.namespaceURI ?? null;
-      const getByTag = (parent: Element, tag: string) =>
-        ns ? parent.getElementsByTagNameNS(ns, tag) : parent.getElementsByTagName(tag);
-      const createEl = (tag: string) => (ns ? doc.createElementNS(ns, tag) : doc.createElement(tag));
-      const allNotes = ns ? doc.getElementsByTagNameNS(ns, 'note') : doc.getElementsByTagName('note');
-      let pitchNoteIndex = 0;
-      for (let i = 0; i < allNotes.length; i++) {
-        const note = allNotes[i];
-        if (!note || getByTag(note, 'pitch').length === 0) continue;
-        if (pitchNoteIndex === noteIndex) {
-          const pitch = getByTag(note, 'pitch')[0];
-          if (!pitch) break;
-          let alterEl = getByTag(pitch, 'alter')[0];
-          if (!alterEl) {
-            alterEl = createEl('alter');
-            pitch.appendChild(alterEl);
-          }
-          alterEl.textContent = String(alter);
-          const accTags = getByTag(note, 'accidental');
-          let accEl = accTags[0];
-          if (accidentalName) {
-            if (!accEl) {
-              accEl = createEl('accidental');
-              note.insertBefore(accEl, note.firstChild);
-            }
-            accEl.textContent = accidentalName;
-          } else if (accEl) {
-            accEl.remove();
-          }
-          break;
-        }
-        pitchNoteIndex++;
-      }
-      const newXml = new XMLSerializer().serializeToString(doc);
+      const newXml = applyAccidentalToXml(currentXml, noteIndex, alter, accidentalName);
+      if (newXml === null) return;
       setCurrentXml(newXml);
       await loadXml(newXml);
-      const osmd = osmdRef.current as unknown as {
-        GraphicSheet?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
-        graphic?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
-      };
-      if (!osmd) return;
-      const graphic = osmd.GraphicSheet ?? osmd.graphic;
-      const measureList = graphic?.MeasureList ?? graphic?.measureList;
-      if (Array.isArray(measureList)) {
-        const numArrays = measureList.length;
-        const numMeasures = Math.max(0, ...measureList.map((arr) => (Array.isArray(arr) ? arr.length : 0)));
-        let idx = 0;
-        outer: for (let measureIdx = 0; measureIdx < numMeasures; measureIdx++) {
-          for (let arrayIdx = 0; arrayIdx < numArrays; arrayIdx++) {
-            const measureArray = measureList[arrayIdx];
-            if (!Array.isArray(measureArray)) continue;
-            const measure = measureArray[measureIdx];
-            if (!measure) continue;
-            const m = measure as { staffEntries?: { graphicalVoiceEntries?: { notes?: unknown[] }[] }[] };
-            for (const staffEntry of m.staffEntries ?? []) {
-              for (const voiceEntry of staffEntry.graphicalVoiceEntries ?? []) {
-                for (const note of voiceEntry.notes ?? []) {
-                  const n = note as { sourceNote?: { isRest?: () => boolean; noteheadColor?: string } };
-                  if (n.sourceNote?.isRest?.()) continue;
-                  if (idx === noteIndex && n.sourceNote) {
-                    n.sourceNote.noteheadColor = '#c00';
-                    selectedNoteRef.current = note as { sourceNote?: { noteheadColor?: string } };
-                    setHasSelection(true);
-                    break outer;
-                  }
-                  idx++;
-                }
-              }
-            }
-          }
+      const measureList = getMeasureList(osmdRef.current);
+      if (measureList) {
+        const highlighted = highlightNoteAtIndex(measureList, noteIndex, '#c00');
+        if (highlighted) {
+          selectedNoteRef.current = highlighted;
+          setHasSelection(true);
         }
       }
       osmdRef.current?.render();
     },
-    [currentXml, getSelectedNoteIndex, loadXml]
+    [currentXml, getSelectedNoteIndexCallback, loadXml]
   );
 
   const handleNatural = useCallback(() => applyAccidental(0, 'natural'), [applyAccidental]);
@@ -227,102 +153,18 @@ export function ScoreEditor() {
   const handleOsmdClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const osmd = osmdRef.current as IOsmdWithGraphic | null;
-      const container = containerRef.current;
-      if (!osmd || !container) return;
-      const raw = osmd as unknown as {
-        GraphicSheet?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
-        graphic?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
-      };
-      const graphic = raw.GraphicSheet ?? raw.graphic;
-      const measureList = graphic?.MeasureList ?? graphic?.measureList;
-      if (!Array.isArray(measureList)) return;
+      if (!osmd || !containerRef.current) return;
+      const measureList = getMeasureList(osmd);
+      if (!measureList) return;
 
-      const clientX = e.clientX;
-      const clientY = e.clientY;
+      const clickedNote = findClickedNote(
+        measureList,
+        e.clientX,
+        e.clientY,
+        e.target as Node
+      );
 
-      type NoteType = {
-        sourceNote?: { noteheadColor?: string };
-        getNoteheadSVGs?: () => HTMLElement[];
-        parentVoiceEntry?: { notes?: unknown[] };
-      };
-
-      const elementToNotes = new Map<Element, NoteType[]>();
-      for (const measureArray of measureList) {
-        if (!Array.isArray(measureArray)) continue;
-        for (const measure of measureArray) {
-          const m = measure as { staffEntries?: { graphicalVoiceEntries?: { notes?: unknown[] }[] }[] };
-          for (const staffEntry of m.staffEntries ?? []) {
-            for (const voiceEntry of staffEntry.graphicalVoiceEntries ?? []) {
-              for (const note of voiceEntry.notes ?? []) {
-                const n = note as NoteType;
-                const noteheads = n.getNoteheadSVGs?.();
-                if (noteheads?.length) {
-                  for (const el of noteheads) {
-                    const list = elementToNotes.get(el) ?? [];
-                    if (!list.includes(n)) list.push(n);
-                    elementToNotes.set(el, list);
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      let clickedNote: NoteType | null = null;
-      const elementsAtPoint = document.elementsFromPoint(clientX, clientY);
-      for (const el of elementsAtPoint) {
-        if (!elementToNotes.has(el)) continue;
-        const notes = elementToNotes.get(el)!;
-        if (notes.length === 1) {
-          clickedNote = notes[0] ?? null;
-          break;
-        }
-        const chordNotes = notes;
-        const withRect = chordNotes
-          .map((note) => {
-            const nn = note as NoteType;
-            const el = nn.getNoteheadSVGs?.()?.[0];
-            const r = el?.getBoundingClientRect();
-            return { note: nn, top: r?.top ?? 0, height: r?.height ?? 0, centerY: r ? r.top + r.height / 2 : 0 };
-          })
-          .filter((x) => x.height > 0);
-        if (withRect.length === 0) {
-          clickedNote = chordNotes[0] ?? null;
-          break;
-        }
-        const sortedByTop = [...withRect].sort((a, b) => a.top - b.top);
-        const chordTop = Math.min(...sortedByTop.map((x) => x.top));
-        const chordBottom = Math.max(...sortedByTop.map((x) => x.top + x.height));
-        const chordHeight = chordBottom - chordTop;
-        const relY = clientY - chordTop;
-        let index = Math.min(
-          sortedByTop.length - 1,
-          Math.max(0, Math.floor((relY / (chordHeight || 1)) * sortedByTop.length))
-        );
-        const firstTop = sortedByTop[0]?.top;
-        const allSameTop = firstTop !== undefined && sortedByTop.every((x) => x.top === firstTop);
-        if (allSameTop) index = sortedByTop.length - 1 - index;
-        clickedNote = sortedByTop[index]?.note ?? chordNotes[0] ?? null;
-        break;
-      }
-
-      if (!clickedNote) {
-        let node: Node | null = e.target as Node;
-        while (node && node !== document.body) {
-          if (node instanceof Element && elementToNotes.has(node)) {
-            const notes = elementToNotes.get(node)!;
-            clickedNote = (notes.length === 1 ? notes[0] : notes[notes.length - 1] ?? notes[0]) ?? null;
-            break;
-          }
-          node = node instanceof Element ? node.parentElement : node.parentNode;
-        }
-      }
-
-      // Clear previous selection
-      if (selectedNoteRef.current?.sourceNote && 'noteheadColor' in selectedNoteRef.current.sourceNote) {
-        delete selectedNoteRef.current.sourceNote.noteheadColor;
-      }
+      clearNoteHighlight(selectedNoteRef.current);
       selectedNoteRef.current = null;
 
       if (clickedNote?.sourceNote) {
@@ -341,16 +183,28 @@ export function ScoreEditor() {
   return (
     <div className="score-editor">
       <div className="score-editor__panel">
-        <button type="button" className="score-editor__btn" onClick={handleOpenFile}>
-          Open File
+        <button
+          type="button"
+          className="score-editor__btn score-editor__btn--icon-only"
+          onClick={handleOpenFile}
+          title="Open File"
+          aria-label="Open File"
+        >
+          <span className="score-editor__btn-icon" aria-hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+          </span>
         </button>
         <button
           type="button"
-          className="score-editor__btn"
+          className="score-editor__btn score-editor__btn--icon-only"
           onClick={handleSaveFile}
           disabled={!currentXml}
+          title="Save File"
+          aria-label="Save File"
         >
-          Save File
+          <span className="score-editor__btn-icon" aria-hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg>
+          </span>
         </button>
         <span className="score-editor__separator" aria-hidden />
         <span className="score-editor__accidentals" role="group" aria-label="Change accidental">

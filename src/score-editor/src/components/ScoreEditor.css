@@ -33,6 +33,23 @@
   cursor: not-allowed;
 }
 
+.score-editor__btn--icon-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  padding: 0.5rem;
+}
+
+.score-editor__btn-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.score-editor__btn-icon svg {
+  vertical-align: middle;
+}
+
 .score-editor__separator {
   width: 1px;
   align-self: stretch;
