@@ -81,44 +81,77 @@ export function applyDuration(xml: string, locator: NoteLocator, duration: Durat
   const newType = TYPE_BY_ID[duration];
 
   const notes = getByTag(measureEl, 'note');
-  let pitchIndex = 0;
-  for (let i = 0; i < notes.length; i++) {
-    const note = notes[i];
-    if (!note || getByTag(note, 'pitch').length === 0) continue;
-
+  const noteHasPitch = (note: Element | null) => !!note && getByTag(note, 'pitch').length > 0;
+  const noteHasChord = (note: Element | null) => !!note && getByTag(note, 'chord').length > 0;
+  const noteMatchesStaffVoice = (note: Element | null) => {
+    if (!note) return false;
     const staffEl = getByTag(note, 'staff')[0];
     const noteStaffNumber = staffEl ? Number(staffEl.textContent ?? '') : 1;
-    if (Number.isFinite(noteStaffNumber) && noteStaffNumber !== locator.staffNumber) continue;
-    if (!Number.isFinite(noteStaffNumber) && locator.staffNumber !== 1) continue;
-
+    if (Number.isFinite(noteStaffNumber) && noteStaffNumber !== locator.staffNumber) return false;
+    if (!Number.isFinite(noteStaffNumber) && locator.staffNumber !== 1) return false;
     if (locator.voice) {
       const voiceEl = getByTag(note, 'voice')[0];
       const v = voiceEl?.textContent?.trim();
-      if (v !== locator.voice) continue;
+      if (v !== locator.voice) return false;
     }
+    return true;
+  };
+  const applyToNote = (note: Element) => {
+    let typeEl = getByTag(note, 'type')[0];
+    if (!typeEl) {
+      typeEl = createEl('type');
+      note.appendChild(typeEl);
+    }
+    typeEl.textContent = newType;
+
+    let durEl = getByTag(note, 'duration')[0];
+    if (!durEl) {
+      durEl = createEl('duration');
+      note.insertBefore(durEl, note.firstChild);
+    }
+    durEl.textContent = String(newDurationValue);
+
+    const dots = Array.from(getByTag(note, 'dot'));
+    for (const d of dots) d.remove();
+    const tm = getByTag(note, 'time-modification')[0];
+    tm?.remove();
+  };
+
+  let pitchIndex = 0;
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i] ?? null;
+    if (!noteHasPitch(note)) continue;
+    if (!noteMatchesStaffVoice(note)) continue;
 
     if (pitchIndex === locator.indexInMeasure) {
-      let typeEl = getByTag(note, 'type')[0];
-      if (!typeEl) {
-        typeEl = createEl('type');
-        // Put <type> near the end, after <duration> if present.
-        note.appendChild(typeEl);
+      // If this note is part of a chord, apply to the whole chord group
+      // (root note + following <chord/> notes within same staff/voice).
+      let rootIdx = i;
+      while (
+        rootIdx > 0 &&
+        noteHasPitch(notes[rootIdx - 1] ?? null) &&
+        noteMatchesStaffVoice(notes[rootIdx - 1] ?? null) &&
+        noteHasChord(notes[rootIdx] ?? null)
+      ) {
+        rootIdx--;
       }
-      typeEl.textContent = newType;
 
-      let durEl = getByTag(note, 'duration')[0];
-      if (!durEl) {
-        durEl = createEl('duration');
-        // Conventionally duration comes before type; insert early.
-        note.insertBefore(durEl, note.firstChild);
+      const root = notes[rootIdx] ?? null;
+      if (!root) return null;
+      applyToNote(root);
+
+      let j = rootIdx + 1;
+      while (j < notes.length) {
+        const next = notes[j] ?? null;
+        if (!noteHasPitch(next)) {
+          j++;
+          continue;
+        }
+        if (!noteMatchesStaffVoice(next)) break;
+        if (!noteHasChord(next)) break;
+        applyToNote(next as Element);
+        j++;
       }
-      durEl.textContent = String(newDurationValue);
-
-      // Make it an exact base duration (no dots / tuplets).
-      const dots = Array.from(getByTag(note, 'dot'));
-      for (const d of dots) d.remove();
-      const tm = getByTag(note, 'time-modification')[0];
-      tm?.remove();
 
       return new XMLSerializer().serializeToString(doc);
     }
