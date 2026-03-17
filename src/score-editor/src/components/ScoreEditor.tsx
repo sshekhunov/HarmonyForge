@@ -101,7 +101,8 @@ export function ScoreEditor() {
   const handleOsmdClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const osmd = osmdRef.current as IOsmdWithGraphic | null;
-      if (!osmd) return;
+      const container = containerRef.current;
+      if (!osmd || !container) return;
       const raw = osmd as unknown as {
         GraphicSheet?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
         graphic?: { MeasureList?: unknown[][]; measureList?: unknown[][] };
@@ -110,10 +111,16 @@ export function ScoreEditor() {
       const measureList = graphic?.MeasureList ?? graphic?.measureList;
       if (!Array.isArray(measureList)) return;
 
-      const target = e.target as Node;
-      type NoteWithNoteheads = { sourceNote?: { noteheadColor?: string }; getNoteheadSVGs?: () => HTMLElement[] };
-      let clickedNote: NoteWithNoteheads | null = null;
+      const clientX = e.clientX;
+      const clientY = e.clientY;
 
+      type NoteType = {
+        sourceNote?: { noteheadColor?: string };
+        getNoteheadSVGs?: () => HTMLElement[];
+        parentVoiceEntry?: { notes?: unknown[] };
+      };
+
+      const elementToNotes = new Map<Element, NoteType[]>();
       for (const measureArray of measureList) {
         if (!Array.isArray(measureArray)) continue;
         for (const measure of measureArray) {
@@ -121,25 +128,69 @@ export function ScoreEditor() {
           for (const staffEntry of m.staffEntries ?? []) {
             for (const voiceEntry of staffEntry.graphicalVoiceEntries ?? []) {
               for (const note of voiceEntry.notes ?? []) {
-                const n = note as NoteWithNoteheads;
+                const n = note as NoteType;
                 const noteheads = n.getNoteheadSVGs?.();
                 if (noteheads?.length) {
                   for (const el of noteheads) {
-                    if (el === target || el.contains(target)) {
-                      clickedNote = n;
-                      break;
-                    }
+                    const list = elementToNotes.get(el) ?? [];
+                    if (!list.includes(n)) list.push(n);
+                    elementToNotes.set(el, list);
                   }
-                  if (clickedNote) break;
                 }
               }
-              if (clickedNote) break;
             }
-            if (clickedNote) break;
           }
-          if (clickedNote) break;
         }
-        if (clickedNote) break;
+      }
+
+      let clickedNote: NoteType | null = null;
+      const elementsAtPoint = document.elementsFromPoint(clientX, clientY);
+      for (const el of elementsAtPoint) {
+        if (!elementToNotes.has(el)) continue;
+        const notes = elementToNotes.get(el)!;
+        if (notes.length === 1) {
+          clickedNote = notes[0] ?? null;
+          break;
+        }
+        const chordNotes = notes;
+        const withRect = chordNotes
+          .map((note) => {
+            const nn = note as NoteType;
+            const el = nn.getNoteheadSVGs?.()?.[0];
+            const r = el?.getBoundingClientRect();
+            return { note: nn, top: r?.top ?? 0, height: r?.height ?? 0, centerY: r ? r.top + r.height / 2 : 0 };
+          })
+          .filter((x) => x.height > 0);
+        if (withRect.length === 0) {
+          clickedNote = chordNotes[0] ?? null;
+          break;
+        }
+        const sortedByTop = [...withRect].sort((a, b) => a.top - b.top);
+        const chordTop = Math.min(...sortedByTop.map((x) => x.top));
+        const chordBottom = Math.max(...sortedByTop.map((x) => x.top + x.height));
+        const chordHeight = chordBottom - chordTop;
+        const relY = clientY - chordTop;
+        let index = Math.min(
+          sortedByTop.length - 1,
+          Math.max(0, Math.floor((relY / (chordHeight || 1)) * sortedByTop.length))
+        );
+        const firstTop = sortedByTop[0]?.top;
+        const allSameTop = firstTop !== undefined && sortedByTop.every((x) => x.top === firstTop);
+        if (allSameTop) index = sortedByTop.length - 1 - index;
+        clickedNote = sortedByTop[index]?.note ?? chordNotes[0] ?? null;
+        break;
+      }
+
+      if (!clickedNote) {
+        let node: Node | null = e.target as Node;
+        while (node && node !== document.body) {
+          if (node instanceof Element && elementToNotes.has(node)) {
+            const notes = elementToNotes.get(node)!;
+            clickedNote = (notes.length === 1 ? notes[0] : notes[notes.length - 1] ?? notes[0]) ?? null;
+            break;
+          }
+          node = node instanceof Element ? node.parentElement : node.parentNode;
+        }
       }
 
       // Clear previous selection
