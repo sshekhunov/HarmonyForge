@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   clearNoteHighlight,
   findClickedNote,
-  highlightNoteAtIndex,
+  highlightNoteByLocator,
   type GraphicNote,
 } from '../helpers/noteSelection';
 import {
   selectionStoreClearSelection,
-  selectionStoreConsumePendingHighlightIndex,
+  selectionStoreConsumePendingLocator,
   selectionStoreSetMeasureList,
   selectionStoreSetSelectedNote,
 } from '../helpers/selectionStore';
@@ -81,9 +81,9 @@ export function ScoreEditor() {
         const measureList = getMeasureList(osmdRef.current);
         selectionStoreSetMeasureList(measureList);
 
-        const pendingIdx = selectionStoreConsumePendingHighlightIndex();
-        if (pendingIdx !== null && measureList) {
-          const highlighted = highlightNoteAtIndex(measureList, pendingIdx, '#c00');
+        const pending = selectionStoreConsumePendingLocator();
+        if (pending && measureList) {
+          const highlighted = highlightNoteByLocator(measureList, pending, '#c00');
           if (highlighted) {
             selectedNoteRef.current = highlighted;
             selectionStoreSetSelectedNote(highlighted);

@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 
-import { getSelectedNoteIndex, type GraphicNote, type MeasureList } from './noteSelection';
+import { getSelectedNoteLocator, type GraphicNote, type MeasureList, type SelectedNoteLocator } from './noteSelection';
 
 type State = {
   measureList: MeasureList | null;
   selectedNote: GraphicNote | null;
-  pendingHighlightIndex: number | null;
+  pendingLocator: SelectedNoteLocator | null;
 };
 
 const state: State = {
   measureList: null,
   selectedNote: null,
-  pendingHighlightIndex: null,
+  pendingLocator: null,
 };
 
 const listeners = new Set<() => void>();
@@ -35,26 +35,26 @@ export function selectionStoreClearSelection() {
   emit();
 }
 
-export function selectionStoreSetPendingHighlightIndex(noteIndex: number | null) {
-  state.pendingHighlightIndex = noteIndex;
+export function selectionStoreSetPendingLocator(locator: SelectedNoteLocator | null) {
+  state.pendingLocator = locator;
   emit();
 }
 
-export function selectionStoreConsumePendingHighlightIndex(): number | null {
-  const v = state.pendingHighlightIndex;
-  state.pendingHighlightIndex = null;
+export function selectionStoreConsumePendingLocator(): SelectedNoteLocator | null {
+  const v = state.pendingLocator;
+  state.pendingLocator = null;
   return v;
 }
 
 function getSnapshot() {
   const hasSelection = !!state.selectedNote?.sourceNote;
-  const selectedNoteIndex =
+  const locator =
     state.measureList && state.selectedNote?.sourceNote
-      ? getSelectedNoteIndex(state.measureList, state.selectedNote.sourceNote)
+      ? getSelectedNoteLocator(state.measureList, state.selectedNote.sourceNote)
       : null;
   return {
     hasSelection,
-    selectedNoteIndex,
+    locator,
   };
 }
 

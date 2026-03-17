@@ -1,5 +1,5 @@
-import { applyAccidentalToXml } from '../../helpers/accidentalHelpers';
-import { useSelectionSnapshot, selectionStoreSetPendingHighlightIndex } from '../../helpers/selectionStore';
+import { applyAccidentalToXmlByLocator } from '../../helpers/accidentalHelpers';
+import { useSelectionSnapshot, selectionStoreSetPendingLocator } from '../../helpers/selectionStore';
 
 type Props = {
   musicXmlFile: string | null;
@@ -10,14 +10,14 @@ export function AccidentalTools({
   musicXmlFile,
   setMusicXmlFile,
 }: Props) {
-  const { hasSelection, selectedNoteIndex } = useSelectionSnapshot();
+  const { hasSelection, locator } = useSelectionSnapshot();
 
   const apply = (alter: number, accidentalName: string) => {
     if (!musicXmlFile) return;
-    if (selectedNoteIndex === null) return;
-    const newXml = applyAccidentalToXml(musicXmlFile, selectedNoteIndex, alter, accidentalName);
+    if (!locator) return;
+    const newXml = applyAccidentalToXmlByLocator(musicXmlFile, locator, alter, accidentalName);
     if (!newXml) return;
-    selectionStoreSetPendingHighlightIndex(selectedNoteIndex);
+    selectionStoreSetPendingLocator(locator);
     setMusicXmlFile(newXml);
   };
 

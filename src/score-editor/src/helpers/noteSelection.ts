@@ -7,6 +7,9 @@ export interface GraphicNote {
   sourceNote?: {
     noteheadColor?: string;
     isRest?: () => boolean;
+    SourceMeasure?: { measureListIndex?: number; MeasureListIndex?: number };
+    ParentStaff?: { Id?: number; idInMusicSheet?: number; ParentInstrument?: { IdString?: string; idString?: string } };
+    ParentVoiceEntry?: { ParentVoice?: { VoiceId?: number | string; voiceId?: number | string } };
   };
   getNoteheadSVGs?: () => HTMLElement[];
   parentVoiceEntry?: { notes?: unknown[] };
@@ -198,6 +201,110 @@ export function highlightNoteAtIndex(
   iterateNotes((note) => {
     if (note.sourceNote?.isRest?.()) return;
     if (idx === noteIndex && note.sourceNote) {
+      note.sourceNote.noteheadColor = color;
+      highlighted = note;
+    }
+    idx++;
+  });
+  return highlighted;
+}
+
+function getMeasureIndexFromSourceNote(sourceNote: unknown): number | null {
+  const sm = (sourceNote as { SourceMeasure?: { measureListIndex?: number; MeasureListIndex?: number } })?.SourceMeasure;
+  const idx = sm ? (sm.measureListIndex ?? sm.MeasureListIndex) : undefined;
+  return typeof idx === 'number' && Number.isFinite(idx) ? idx : null;
+}
+
+function getStaffIdFromSourceNote(sourceNote: unknown): number | null {
+  const staff = (sourceNote as { ParentStaff?: { Id?: number; idInMusicSheet?: number } })?.ParentStaff;
+  const id = staff ? (staff.Id ?? staff.idInMusicSheet) : undefined;
+  return typeof id === 'number' && Number.isFinite(id) ? id : null;
+}
+
+function toMusicXmlStaffNumber(osmdStaffId: number): number {
+  // OSMD staff id is inconsistent across versions/scores:
+  // sometimes 0-based within part (0,1), sometimes already 1-based (1,2).
+  // We normalize to a MusicXML staff number (1+).
+  return osmdStaffId >= 1 ? osmdStaffId : osmdStaffId + 1;
+}
+
+function getPartIdFromSourceNote(sourceNote: unknown): string | undefined {
+  const inst = (sourceNote as { ParentStaff?: { ParentInstrument?: { IdString?: string; idString?: string } } })?.ParentStaff
+    ?.ParentInstrument;
+  const id = inst ? (inst.IdString ?? inst.idString) : undefined;
+  return typeof id === 'string' && id.length > 0 ? id : undefined;
+}
+
+function getVoiceIdFromSourceNote(sourceNote: unknown): string | undefined {
+  const v = (sourceNote as { ParentVoiceEntry?: { ParentVoice?: { VoiceId?: number | string; voiceId?: number | string } } })
+    ?.ParentVoiceEntry?.ParentVoice;
+  const id = v ? (v.VoiceId ?? v.voiceId) : undefined;
+  if (typeof id === 'number' && Number.isFinite(id)) return String(id);
+  if (typeof id === 'string' && id.length > 0) return id;
+  return undefined;
+}
+
+export type SelectedNoteLocator = {
+  partId?: string;
+  measureIndex: number;
+  staffNumber: number;
+  voice?: string;
+  indexInMeasure: number;
+};
+
+export function getSelectedNoteLocator(
+  measureList: MeasureList,
+  selectedSourceNote: unknown
+): SelectedNoteLocator | null {
+  const measureIndex = getMeasureIndexFromSourceNote(selectedSourceNote);
+  const staffId = getStaffIdFromSourceNote(selectedSourceNote);
+  if (measureIndex === null || staffId === null) return null;
+  const partId = getPartIdFromSourceNote(selectedSourceNote);
+  const voice = getVoiceIdFromSourceNote(selectedSourceNote);
+
+  let idx = 0;
+  let found: number | null = null;
+  const { iterateNotes } = getMeasureListGraph(measureList);
+  iterateNotes((note) => {
+    const sn = note.sourceNote as unknown;
+    if (!sn || note.sourceNote?.isRest?.()) return;
+    if (getMeasureIndexFromSourceNote(sn) !== measureIndex) return;
+    if (getStaffIdFromSourceNote(sn) !== staffId) return;
+    if (voice && getVoiceIdFromSourceNote(sn) !== voice) return;
+    if (sn === selectedSourceNote) {
+      found = idx;
+      return;
+    }
+    idx++;
+  });
+
+  if (found === null) return null;
+  return {
+    partId,
+    measureIndex,
+    staffNumber: toMusicXmlStaffNumber(staffId),
+    voice,
+    indexInMeasure: found,
+  };
+}
+
+export function highlightNoteByLocator(
+  measureList: MeasureList,
+  locator: SelectedNoteLocator,
+  color: string
+): GraphicNote | null {
+  const targetMeasureIndex = locator.measureIndex;
+  const targetStaffId = locator.staffNumber - 1; // best-effort for comparing to OSMD staff ids
+  let idx = 0;
+  let highlighted: GraphicNote | null = null;
+  const { iterateNotes } = getMeasureListGraph(measureList);
+  iterateNotes((note) => {
+    const sn = note.sourceNote as unknown;
+    if (!sn || note.sourceNote?.isRest?.()) return;
+    if (getMeasureIndexFromSourceNote(sn) !== targetMeasureIndex) return;
+    if (getStaffIdFromSourceNote(sn) !== targetStaffId) return;
+    if (locator.voice && getVoiceIdFromSourceNote(sn) !== locator.voice) return;
+    if (idx === locator.indexInMeasure && note.sourceNote) {
       note.sourceNote.noteheadColor = color;
       highlighted = note;
     }
