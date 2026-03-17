@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSelectionSnapshot } from '../../helpers/selectionStore';
 import { selectionStoreSetPendingLocator } from '../../helpers/selectionStore';
-import { applyDuration } from '../../helpers/durationHelpers';
+import { applyDurationWithReflow } from '../../helpers/durationHelpers';
 
 type DurationValue = 'whole' | 'half' | 'quarter' | 'eighth' | '16th' | '32nd' | '64th';
 
@@ -87,7 +87,7 @@ export function DurationTools({ musicXmlFile, setMusicXmlFile }: Props) {
               setManualSelected(def.id);
               if (!musicXmlFile) return;
               if (!locator) return;
-              const newXml = applyDuration(musicXmlFile, locator as any, def.id);
+              const newXml = applyDurationWithReflow(musicXmlFile, locator as any, def.id);
               if (!newXml) return;
               selectionStoreSetPendingLocator(locator as any);
               setMusicXmlFile(newXml);
