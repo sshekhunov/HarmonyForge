@@ -19,7 +19,7 @@ export type NoteLocator = {
  * Applies an accidental using a robust locator:
  * part (optional) + measure index + staff + (optional) voice + index-in-measure.
  */
-export function applyAccidentalToXmlByLocator(
+export function applyAccidental(
   xml: string,
   locator: NoteLocator,
   alter: number,
@@ -50,9 +50,81 @@ export function applyAccidentalToXmlByLocator(
   const measureEl = measures[locator.measureIndex] ?? null;
   if (!measureEl) return null;
 
+  const notes = getByTag(measureEl, 'note');
+  let pitchIndex = 0;
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i];
+    if (!note || getByTag(note, 'pitch').length === 0) continue;
+
+    const staffEl = getByTag(note, 'staff')[0];
+    const noteStaffNumber = staffEl ? Number(staffEl.textContent ?? '') : 1;
+    if (Number.isFinite(noteStaffNumber) && noteStaffNumber !== locator.staffNumber) continue;
+    if (!Number.isFinite(noteStaffNumber) && locator.staffNumber !== 1) continue;
+
+    if (locator.voice) {
+      const voiceEl = getByTag(note, 'voice')[0];
+      const v = voiceEl?.textContent?.trim();
+      if (v !== locator.voice) continue;
+    }
+
+    if (pitchIndex === locator.indexInMeasure) {
+      const pitch = getByTag(note, 'pitch')[0];
+      if (!pitch) break;
+
+      let alterEl = getByTag(pitch, 'alter')[0];
+      if (!alterEl) {
+        alterEl = createEl('alter');
+        pitch.appendChild(alterEl);
+      }
+      alterEl.textContent = String(alter);
+
+      const accTags = getByTag(note, 'accidental');
+      let accEl = accTags[0];
+      if (accidentalName) {
+        if (!accEl) {
+          accEl = createEl('accidental');
+          note.insertBefore(accEl, note.firstChild);
+        }
+        accEl.textContent = accidentalName;
+      } else if (accEl) {
+        accEl.remove();
+      }
+      return new XMLSerializer().serializeToString(doc);
+    }
+
+    pitchIndex++;
+  }
+
+  return null;
+}
+
+export function clearAccidental(xml: string, locator: NoteLocator): string | null {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, 'application/xml');
+  const ns = doc.documentElement.namespaceURI ?? null;
+  const getByTag = (parent: Element, tag: string) =>
+    ns ? parent.getElementsByTagNameNS(ns, tag) : parent.getElementsByTagName(tag);
+  const createEl = (tag: string) => (ns ? doc.createElementNS(ns, tag) : doc.createElement(tag));
+
+  const parts = ns ? doc.getElementsByTagNameNS(ns, 'part') : doc.getElementsByTagName('part');
+  let partEl: Element | null = null;
+  if (locator.partId) {
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
+      if (p?.getAttribute('id') === locator.partId) {
+        partEl = p;
+        break;
+      }
+    }
+  }
+  partEl = partEl ?? (parts.length > 0 ? (parts[0] ?? null) : null);
+  if (!partEl) return null;
+
+  const measures = getByTag(partEl, 'measure');
+  const measureEl = measures[locator.measureIndex] ?? null;
+  if (!measureEl) return null;
+
   const getActiveKeyFifths = (): number => {
-    // Walk measures up to current, tracking last <attributes><key><fifths>.
-    // Defaults to C major / A minor (0).
     let fifths = 0;
     for (let mi = 0; mi <= locator.measureIndex; mi++) {
       const m = measures[mi];
@@ -70,7 +142,6 @@ export function applyAccidentalToXmlByLocator(
   };
 
   const keyAlterForStep = (step: string, fifths: number): number => {
-    // Order: sharps F C G D A E B ; flats B E A D G C F
     const sharps = ['F', 'C', 'G', 'D', 'A', 'E', 'B'] as const;
     const flats = ['B', 'E', 'A', 'D', 'G', 'C', 'F'] as const;
     const up = step.toUpperCase();
@@ -100,45 +171,27 @@ export function applyAccidentalToXmlByLocator(
       const pitch = getByTag(note, 'pitch')[0];
       if (!pitch) break;
 
-      const isClear = !accidentalName && alter === 0;
+      const stepEl = getByTag(pitch, 'step')[0];
+      const step = stepEl?.textContent?.trim() ?? '';
+      const fifths = getActiveKeyFifths();
+      const keyAlter = step ? keyAlterForStep(step, fifths) : 0;
+
       let alterEl = getByTag(pitch, 'alter')[0];
-      if (isClear) {
-        // Clear = follow key signature: set <alter> to key's default for this step, and remove <accidental>.
-        const stepEl = getByTag(pitch, 'step')[0];
-        const step = stepEl?.textContent?.trim() ?? '';
-        const fifths = getActiveKeyFifths();
-        const keyAlter = step ? keyAlterForStep(step, fifths) : 0;
-        if (keyAlter === 0) {
-          alterEl?.remove();
-        } else {
-          if (!alterEl) {
-            alterEl = createEl('alter');
-            pitch.appendChild(alterEl);
-          }
-          alterEl.textContent = String(keyAlter);
-        }
+      if (keyAlter === 0) {
+        alterEl?.remove();
       } else {
         if (!alterEl) {
           alterEl = createEl('alter');
           pitch.appendChild(alterEl);
         }
-        alterEl.textContent = String(alter);
+        alterEl.textContent = String(keyAlter);
       }
 
-      const accTags = getByTag(note, 'accidental');
-      let accEl = accTags[0];
-      if (accidentalName) {
-        if (!accEl) {
-          accEl = createEl('accidental');
-          note.insertBefore(accEl, note.firstChild);
-        }
-        accEl.textContent = accidentalName;
-      } else if (accEl) {
-        accEl.remove();
-      }
+      const accEl = getByTag(note, 'accidental')[0];
+      accEl?.remove();
+
       return new XMLSerializer().serializeToString(doc);
     }
-
     pitchIndex++;
   }
 

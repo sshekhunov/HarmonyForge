@@ -1,4 +1,4 @@
-import { applyAccidentalToXmlByLocator } from '../../helpers/accidentalHelpers';
+import { applyAccidental, clearAccidental } from '../../helpers/accidentalHelpers';
 import { useSelectionSnapshot, selectionStoreSetPendingLocator } from '../../helpers/selectionStore';
 
 type Props = {
@@ -15,7 +15,16 @@ export function AccidentalTools({
   const apply = (alter: number, accidentalName: string) => {
     if (!musicXmlFile) return;
     if (!locator) return;
-    const newXml = applyAccidentalToXmlByLocator(musicXmlFile, locator, alter, accidentalName);
+    const newXml = applyAccidental(musicXmlFile, locator, alter, accidentalName);
+    if (!newXml) return;
+    selectionStoreSetPendingLocator(locator);
+    setMusicXmlFile(newXml);
+  };
+
+  const clear = () => {
+    if (!musicXmlFile) return;
+    if (!locator) return;
+    const newXml = clearAccidental(musicXmlFile, locator);
     if (!newXml) return;
     selectionStoreSetPendingLocator(locator);
     setMusicXmlFile(newXml);
@@ -76,7 +85,7 @@ export function AccidentalTools({
       <button
         type="button"
         className="score-editor__btn score-editor__btn--symbol score-editor__btn--clear"
-        onClick={() => apply(0, '')}
+        onClick={clear}
         disabled={!hasSelection}
         title="Remove accidental (note follows key signature)"
         aria-label="Remove accidental so note follows key signature"
