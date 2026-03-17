@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSelectionSnapshot } from '../../helpers/selectionStore';
 import { selectionStoreSetPendingLocator } from '../../helpers/selectionStore';
-import { applyDurationWithReflow, getDurationIdFromXml } from '../../helpers/durationHelpers';
+import { applyDurationWithReflow, getDotCountFromXml, getDurationIdFromXml } from '../../helpers/durationHelpers';
 
 type DurationValue = 'whole' | 'half' | 'quarter' | 'eighth' | '16th' | '32nd' | '64th';
 
@@ -11,6 +11,8 @@ type DurationDef = {
   symbol: string;
 };
 
+type DotValue = 0 | 1 | 2;
+
 const DURATIONS: DurationDef[] = [
   { id: 'whole', label: 'Whole', symbol: '𝅝' },
   { id: 'half', label: 'Half', symbol: '𝅗𝅥' },
@@ -19,6 +21,12 @@ const DURATIONS: DurationDef[] = [
   { id: '16th', label: 'Sixteenth', symbol: '𝅘𝅥𝅯' },
   { id: '32nd', label: 'Thirty-second', symbol: '𝅘𝅥𝅰' },
   { id: '64th', label: 'Sixty-fourth', symbol: '𝅘𝅥𝅱' },
+];
+
+const DOTS: Array<{ id: DotValue; label: string; symbol: string }> = [
+  { id: 0, label: 'Single note', symbol: '𝅘𝅥' },
+  { id: 1, label: 'Dotted (×1.5)', symbol: '𝅘𝅥·' },
+  { id: 2, label: 'Double-dotted (×1.75)', symbol: '𝅘𝅥··' },
 ];
 
 function durationIdFromSelectedNote(selectedNote: unknown): DurationValue | null {
@@ -69,40 +77,74 @@ export function DurationTools({ musicXmlFile, setMusicXmlFile }: Props) {
     selectedNote?: unknown;
   };
   const [manualSelected, setManualSelected] = useState<DurationValue>('quarter');
+  const [manualDot, setManualDot] = useState<DotValue>(0);
   const byId = useMemo(() => new Map(DURATIONS.map((d) => [d.id, d])), []);
   const selectedFromXml =
     musicXmlFile && locator ? (getDurationIdFromXml(musicXmlFile, locator as any) as DurationValue | null) : null;
+  const dotFromXml =
+    musicXmlFile && locator ? (getDotCountFromXml(musicXmlFile, locator as any) as DotValue | null) : null;
   const selectedFromNote = durationIdFromSelectedNote(selectedNote);
   const selected = selectedFromXml ?? selectedFromNote ?? manualSelected;
+  const dot = dotFromXml ?? manualDot;
 
   return (
-    <span className="score-editor__durations" role="group" aria-label="Note duration">
-      {DURATIONS.map((d) => {
-        const def = byId.get(d.id) ?? d;
-        const isSelected = selected === def.id;
-        return (
-          <button
-            key={def.id}
-            type="button"
-            className={`score-editor__btn score-editor__btn--symbol score-editor__btn--toggle${isSelected ? ' is-active' : ''}`}
-            onClick={() => {
-              setManualSelected(def.id);
-              if (!musicXmlFile) return;
-              if (!locator) return;
-              const newXml = applyDurationWithReflow(musicXmlFile, locator as any, def.id);
-              if (!newXml) return;
-              selectionStoreSetPendingLocator(locator as any);
-              setMusicXmlFile(newXml);
-            }}
-            aria-pressed={isSelected}
-            disabled={!hasSelection}
-            title={def.label}
-            aria-label={`Set duration to ${def.label.toLowerCase()}`}
-          >
-            {def.symbol}
-          </button>
-        );
-      })}
+    <span className="score-editor__durations" aria-label="Duration tools">
+      <span className="score-editor__durations-group" role="group" aria-label="Note duration">
+        {DURATIONS.map((d) => {
+          const def = byId.get(d.id) ?? d;
+          const isSelected = selected === def.id;
+          return (
+            <button
+              key={def.id}
+              type="button"
+              className={`score-editor__btn score-editor__btn--symbol score-editor__btn--toggle${isSelected ? ' is-active' : ''}`}
+              onClick={() => {
+                setManualSelected(def.id);
+                if (!musicXmlFile) return;
+                if (!locator) return;
+                const newXml = applyDurationWithReflow(musicXmlFile, locator as any, def.id, dot);
+                if (!newXml) return;
+                selectionStoreSetPendingLocator(locator as any);
+                setMusicXmlFile(newXml);
+              }}
+              aria-pressed={isSelected}
+              disabled={!hasSelection}
+              title={def.label}
+              aria-label={`Set duration to ${def.label.toLowerCase()}`}
+            >
+              {def.symbol}
+            </button>
+          );
+        })}
+      </span>
+
+      <span className="score-editor__durations-group" role="group" aria-label="Dotting">
+        {DOTS.map((d) => {
+          const isSelected = dot === d.id;
+          return (
+            <button
+              key={d.id}
+              type="button"
+              className={`score-editor__btn score-editor__btn--symbol score-editor__btn--toggle${isSelected ? ' is-active' : ''}`}
+              onClick={() => {
+                setManualDot(d.id);
+                if (!musicXmlFile) return;
+                if (!locator) return;
+                const newXml = applyDurationWithReflow(musicXmlFile, locator as any, selected, d.id);
+                if (!newXml) return;
+                selectionStoreSetPendingLocator(locator as any);
+                setMusicXmlFile(newXml);
+              }}
+              aria-pressed={isSelected}
+              disabled={!hasSelection}
+              title={d.label}
+              aria-label={d.label}
+            >
+              {d.symbol}
+            </button>
+          );
+        })}
+      </span>
     </span>
   );
 }

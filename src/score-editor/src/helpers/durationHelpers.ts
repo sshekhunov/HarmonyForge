@@ -81,6 +81,24 @@ export function getDurationIdFromXml(xml: string, locator: NoteLocator): Duratio
   return bestBaseDurationId(divisions, dur);
 }
 
+export function getDotCountFromXml(xml: string, locator: NoteLocator): 0 | 1 | 2 | null {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, 'application/xml');
+  const ctx = buildXmlCtx(doc);
+  const { measures } = getPartAndMeasures(doc, ctx, locator);
+  if (!measures) return null;
+  const measureEl = measures[locator.measureIndex] ?? null;
+  if (!measureEl) return null;
+
+  const extracted = extractVoiceEvents(measureEl, measures, ctx, locator);
+  const ev = extracted?.selectedEvent ?? null;
+  if (!ev) return null;
+  const dots = Array.from(ctx.getByTag(ev.root, 'dot')).length;
+  if (dots <= 0) return 0;
+  if (dots === 1) return 1;
+  return 2;
+}
+
 function bestBaseDurationId(divisions: number, durationValue: number): DurationValue {
   const q = durationValue / Math.max(1, divisions);
   let best = ORDERED_BASE_TYPES[2]!.id; // quarter
@@ -143,14 +161,19 @@ function getActiveDivisionsForMeasure(measures: HTMLCollectionOf<Element>, ctx: 
   return divs;
 }
 
-function removeDotsAndTuplets(note: Element, ctx: XmlCtx) {
-  const dots = Array.from(ctx.getByTag(note, 'dot'));
-  for (const d of dots) d.remove();
-  const tm = ctx.getByTag(note, 'time-modification')[0];
-  tm?.remove();
+function applyDotCount(note: Element, ctx: XmlCtx, dotCount: 0 | 1 | 2) {
+  const existing = Array.from(ctx.getByTag(note, 'dot'));
+  for (const d of existing) d.remove();
+  for (let i = 0; i < dotCount; i++) note.appendChild(ctx.createEl('dot'));
 }
 
-function setNoteDurationAndType(note: Element, ctx: XmlCtx, durationValue: number, typeId: DurationValue) {
+function setNoteDurationAndType(
+  note: Element,
+  ctx: XmlCtx,
+  durationValue: number,
+  typeId: DurationValue,
+  dotCount: 0 | 1 | 2
+) {
   let typeEl = ctx.getByTag(note, 'type')[0];
   if (!typeEl) {
     typeEl = ctx.createEl('type');
@@ -165,7 +188,10 @@ function setNoteDurationAndType(note: Element, ctx: XmlCtx, durationValue: numbe
   }
   durEl.textContent = String(Math.max(1, Math.round(durationValue)));
 
-  removeDotsAndTuplets(note, ctx);
+  // We manage dots explicitly; always strip tuplets.
+  const tm = ctx.getByTag(note, 'time-modification')[0];
+  tm?.remove();
+  applyDotCount(note, ctx, dotCount);
 }
 
 function ensureNotationsTied(note: Element, ctx: XmlCtx, tiedType: 'start' | 'stop') {
@@ -460,9 +486,9 @@ function setEventDuration(ev: VoiceEvent, ctx: XmlCtx, durationValue: number, di
   const typeId = bestBaseDurationId(divisions, durationValue);
   if (ev.kind === 'chord') {
     const notes = ev.chordNotes.length > 0 ? ev.chordNotes : [ev.root];
-    for (const n of notes) setNoteDurationAndType(n, ctx, durationValue, typeId);
+    for (const n of notes) setNoteDurationAndType(n, ctx, durationValue, typeId, 0);
   } else {
-    setNoteDurationAndType(ev.root, ctx, durationValue, typeId);
+    setNoteDurationAndType(ev.root, ctx, durationValue, typeId, 0);
   }
   ev.duration = durationValue;
 }
@@ -475,7 +501,16 @@ function addTieToEvent(ev: VoiceEvent, ctx: XmlCtx, tieType: 'start' | 'stop') {
   }
 }
 
-export function applyDurationWithReflow(xml: string, locator: NoteLocator, duration: DurationValue): string | null {
+function dotMultiplier(dotCount: 0 | 1 | 2): number {
+  return dotCount === 1 ? 1.5 : dotCount === 2 ? 1.75 : 1;
+}
+
+export function applyDurationWithReflow(
+  xml: string,
+  locator: NoteLocator,
+  duration: DurationValue,
+  dotCount: 0 | 1 | 2 = 0
+): string | null {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xml, 'application/xml');
   const ctx = buildXmlCtx(doc);
@@ -490,10 +525,21 @@ export function applyDurationWithReflow(xml: string, locator: NoteLocator, durat
   const { events, selectedEvent, oldSelectedDuration, measureTotal, divisions } = extracted;
   if (!selectedEvent) return null;
 
-  const targetNewDuration = durationInDivisions(divisions, duration);
+  const base = durationInDivisions(divisions, duration);
+  const targetNewDuration = Math.max(1, Math.round(base * dotMultiplier(dotCount)));
 
   // Apply duration to selected event first.
-  setEventDuration(selectedEvent, ctx, targetNewDuration, divisions);
+  {
+    const typeId = duration;
+    const notes =
+      selectedEvent.kind === 'chord'
+        ? selectedEvent.chordNotes.length > 0
+          ? selectedEvent.chordNotes
+          : [selectedEvent.root]
+        : [selectedEvent.root];
+    for (const n of notes) setNoteDurationAndType(n, ctx, targetNewDuration, typeId, dotCount);
+    selectedEvent.duration = targetNewDuration;
+  }
 
   const newDur = targetNewDuration;
   const oldDur = oldSelectedDuration;
@@ -582,7 +628,7 @@ export function applyDurationWithReflow(xml: string, locator: NoteLocator, durat
           if (!sEl.parentNode) clone.appendChild(sEl);
         }
 
-        setNoteDurationAndType(clone, ctx, chunk, bestBaseDurationId(divNext, chunk));
+        setNoteDurationAndType(clone, ctx, chunk, bestBaseDurationId(divNext, chunk), 0);
         contNotes.push(clone);
       }
 
