@@ -7,6 +7,14 @@ interface IOSMDInstance {
   render(): void;
 }
 
+/** OSMD internal: GraphicSheet has GetNearestNote; click coords must be in sheet units (px/10/zoom) */
+interface IOsmdWithGraphic extends IOSMDInstance {
+  GraphicSheet?: {
+    GetNearestNote(clickPos: { x: number; y: number }, maxDist: { x: number; y: number }): { sourceNote?: { noteheadColor?: string } } | null;
+  };
+  Zoom?: number;
+}
+
 async function createOsmd(container: HTMLElement): Promise<IOSMDInstance> {
   // Bundle exposes OpenSheetMusicDisplay on default or as namespace
   const OSMD = await import('opensheetmusicdisplay');
@@ -19,6 +27,7 @@ async function createOsmd(container: HTMLElement): Promise<IOSMDInstance> {
 export function ScoreEditor() {
   const containerRef = useRef<HTMLDivElement>(null);
   const osmdRef = useRef<IOSMDInstance | null>(null);
+  const selectedNoteRef = useRef<{ sourceNote?: { noteheadColor?: string } } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentXml, setCurrentXml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +54,7 @@ export function ScoreEditor() {
       setError(null);
       try {
         await osmdRef.current.load(xml);
+        selectedNoteRef.current = null;
         osmdRef.current.render();
         setCurrentXml(xml);
       } catch (err) {
@@ -88,6 +98,40 @@ export function ScoreEditor() {
     URL.revokeObjectURL(url);
   }, [currentXml]);
 
+  const handleOsmdClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const osmd = osmdRef.current as IOsmdWithGraphic | null;
+      const container = containerRef.current;
+      if (!osmd || !container) return;
+      const raw = osmd as unknown as { GraphicSheet?: { GetNearestNote: (a: { x: number; y: number }, b: { x: number; y: number }) => unknown }; graphic?: { GetNearestNote: (a: { x: number; y: number }, b: { x: number; y: number }) => unknown }; Zoom?: number };
+      const graphic = raw.GraphicSheet ?? raw.graphic;
+      if (!graphic?.GetNearestNote) return;
+
+      const rect = container.getBoundingClientRect();
+      const zoom = Number(raw.Zoom) || 1;
+      const unitScale = 10 * zoom;
+      const contentX = e.clientX - rect.left + container.scrollLeft;
+      const contentY = e.clientY - rect.top + container.scrollTop;
+      const sheetPoint = { x: contentX / unitScale, y: contentY / unitScale };
+      const maxDist = { x: 15, y: 15 };
+      const note = graphic.GetNearestNote(sheetPoint, maxDist) as { sourceNote?: { noteheadColor?: string } } | null;
+
+      // Clear previous selection
+      if (selectedNoteRef.current?.sourceNote && 'noteheadColor' in selectedNoteRef.current.sourceNote) {
+        delete selectedNoteRef.current.sourceNote.noteheadColor;
+      }
+      selectedNoteRef.current = null;
+
+      if (note?.sourceNote) {
+        note.sourceNote.noteheadColor = '#c00';
+        selectedNoteRef.current = note;
+      }
+
+      osmd.render();
+    },
+    []
+  );
+
   return (
     <div className="score-editor">
       <div className="score-editor__panel">
@@ -112,7 +156,13 @@ export function ScoreEditor() {
         aria-hidden
       />
       {error && <div className="score-editor__error" role="alert">{error}</div>}
-      <div ref={containerRef} className="score-editor__osmd" />
+      <div
+        ref={containerRef}
+        className="score-editor__osmd"
+        onClick={handleOsmdClick}
+        role="application"
+        aria-label="Score: click a note to select it"
+      />
     </div>
   );
 }
