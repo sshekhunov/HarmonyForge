@@ -297,7 +297,8 @@ function extractVoiceEvents(
   const matchesTarget = (note: Element) => {
     const { staff, voice } = getNoteVoiceStaff(note, ctx);
     if (staff !== locator.staffNumber) return false;
-    if (locator.voice && voice !== locator.voice) return false;
+    // Many MusicXML files omit <voice> on rests; be tolerant when matching.
+    if (locator.voice && voice && voice !== locator.voice) return false;
     return true;
   };
 
@@ -406,25 +407,33 @@ function extractVoiceEvents(
 
   // Second pass: find selected pitch note element by reproducing our pitch indexing rule.
   // Then map it to its event.
-  pitchCounter = 0;
-  for (const ev of events) {
-    const candidateNotes =
-      ev.kind === 'chord'
-        ? ev.chordNotes.length > 0
-          ? ev.chordNotes
-          : [ev.root]
-        : [ev.root];
-    for (const n of candidateNotes) {
-      if (!hasPitch(n, ctx)) continue;
-      if (pitchCounter === locator.indexInMeasure) {
-        selectedEvent = ev;
-        selectedChordRootNote = ev.kind === 'chord' ? (ev.chordNotes[0] ?? ev.root) : ev.root;
-        oldSelectedDuration = ev.duration;
-        break;
-      }
-      pitchCounter++;
+  if (locator.target === 'rest' && typeof locator.eventIndex === 'number') {
+    const ev = events[locator.eventIndex] ?? null;
+    if (ev && ev.kind === 'rest') {
+      selectedEvent = ev;
+      oldSelectedDuration = ev.duration;
     }
-    if (selectedEvent) break;
+  } else {
+    pitchCounter = 0;
+    for (const ev of events) {
+      const candidateNotes =
+        ev.kind === 'chord'
+          ? ev.chordNotes.length > 0
+            ? ev.chordNotes
+            : [ev.root]
+          : [ev.root];
+      for (const n of candidateNotes) {
+        if (!hasPitch(n, ctx)) continue;
+        if (pitchCounter === locator.indexInMeasure) {
+          selectedEvent = ev;
+          selectedChordRootNote = ev.kind === 'chord' ? (ev.chordNotes[0] ?? ev.root) : ev.root;
+          oldSelectedDuration = ev.duration;
+          break;
+        }
+        pitchCounter++;
+      }
+      if (selectedEvent) break;
+    }
   }
 
   return {
@@ -530,14 +539,19 @@ export function applyDurationWithReflow(
 
   // Apply duration to selected event first.
   {
-    const typeId = duration;
-    const notes =
-      selectedEvent.kind === 'chord'
-        ? selectedEvent.chordNotes.length > 0
-          ? selectedEvent.chordNotes
-          : [selectedEvent.root]
-        : [selectedEvent.root];
-    for (const n of notes) setNoteDurationAndType(n, ctx, targetNewDuration, typeId, dotCount);
+    if (selectedEvent.kind === 'rest') {
+      const typeId = bestBaseDurationId(divisions, targetNewDuration);
+      setNoteDurationAndType(selectedEvent.root, ctx, targetNewDuration, typeId, dotCount);
+    } else {
+      const typeId = duration;
+      const notes =
+        selectedEvent.kind === 'chord'
+          ? selectedEvent.chordNotes.length > 0
+            ? selectedEvent.chordNotes
+            : [selectedEvent.root]
+          : [selectedEvent.root];
+      for (const n of notes) setNoteDurationAndType(n, ctx, targetNewDuration, typeId, dotCount);
+    }
     selectedEvent.duration = targetNewDuration;
   }
 

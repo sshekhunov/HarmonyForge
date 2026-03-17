@@ -211,30 +211,56 @@ export function getSelectedNoteLocator(
   if (measureIndex === null || staffId === null) return null;
   const partId = getPartIdFromSourceNote(selectedSourceNote);
   const voice = getVoiceIdFromSourceNote(selectedSourceNote);
+  const isRest = !!(selectedSourceNote as { isRest?: () => boolean })?.isRest?.();
 
-  let idx = 0;
-  let found: number | null = null;
+  let pitchIdx = 0;
+  let foundPitch: number | null = null;
+  let eventIdx = 0;
+  let foundEvent: number | null = null;
   const { iterateNotes } = getMeasureListGraph(measureList);
   iterateNotes((note) => {
     const sn = note.sourceNote as unknown;
-    if (!sn || note.sourceNote?.isRest?.()) return;
+    if (!sn) return;
     if (getMeasureIndexFromSourceNote(sn) !== measureIndex) return;
     if (getStaffIdFromSourceNote(sn) !== staffId) return;
     if (voice && getVoiceIdFromSourceNote(sn) !== voice) return;
+    const curIsRest = !!note.sourceNote?.isRest?.();
+    // Count events: rests and non-chord notes only (chord notes belong to previous event).
+    const isChordNote = !curIsRest && ((sn as any)?.IsChord ?? (sn as any)?.isChord ?? false);
+    if (!isChordNote) {
+      if (sn === selectedSourceNote) foundEvent = eventIdx;
+      eventIdx++;
+    }
+
+    if (curIsRest) return;
     if (sn === selectedSourceNote) {
-      found = idx;
+      foundPitch = pitchIdx;
       return;
     }
-    idx++;
+    pitchIdx++;
   });
 
-  if (found === null) return null;
+  if (isRest) {
+    if (foundEvent === null) return null;
+    return {
+      partId,
+      measureIndex,
+      staffNumber: toMusicXmlStaffNumber(staffId),
+      voice,
+      target: 'rest',
+      eventIndex: foundEvent,
+      indexInMeasure: 0,
+    };
+  }
+  if (foundPitch === null) return null;
   return {
     partId,
     measureIndex,
     staffNumber: toMusicXmlStaffNumber(staffId),
     voice,
-    indexInMeasure: found,
+    target: 'note',
+    eventIndex: foundEvent ?? undefined,
+    indexInMeasure: foundPitch,
   };
 }
 
@@ -248,25 +274,43 @@ export function highlightNoteByLocator(
 
   const tryHighlight = (ignoreVoice: boolean): GraphicNote | null => {
     for (const staffNumber of staffCandidates) {
-      let idx = 0;
+      let pitchIdx = 0;
+      let eventIdx = 0;
       let highlighted: GraphicNote | null = null;
       const { iterateNotes } = getMeasureListGraph(measureList);
       iterateNotes((note) => {
         const sn = note.sourceNote as unknown;
         if (highlighted) return;
-        if (!sn || note.sourceNote?.isRest?.()) return;
+        if (!sn) return;
         if (getMeasureIndexFromSourceNote(sn) !== targetMeasureIndex) return;
         const staffId = getStaffIdFromSourceNote(sn);
         if (staffId === null) return;
         const noteStaffNumber = toMusicXmlStaffNumber(staffId);
         if (noteStaffNumber !== staffNumber) return;
         if (!ignoreVoice && locator.voice && getVoiceIdFromSourceNote(sn) !== locator.voice) return;
-        if (idx === locator.indexInMeasure && note.sourceNote) {
-          note.sourceNote.noteheadColor = color;
-          highlighted = note;
-          return;
+        const curIsRest = !!note.sourceNote?.isRest?.();
+        const isChordNote = !curIsRest && ((sn as any)?.IsChord ?? (sn as any)?.isChord ?? false);
+        if (!isChordNote) {
+          if (locator.target === 'rest') {
+            if (curIsRest && eventIdx === (locator.eventIndex ?? -1) && note.sourceNote) {
+              note.sourceNote.noteheadColor = color;
+              highlighted = note;
+              return;
+            }
+          } else {
+            // note target: use pitch index
+          }
+          eventIdx++;
         }
-        idx++;
+
+        if (!curIsRest) {
+          if (locator.target !== 'rest' && pitchIdx === locator.indexInMeasure && note.sourceNote) {
+            note.sourceNote.noteheadColor = color;
+            highlighted = note;
+            return;
+          }
+          pitchIdx++;
+        }
       });
       if (highlighted) return highlighted;
     }

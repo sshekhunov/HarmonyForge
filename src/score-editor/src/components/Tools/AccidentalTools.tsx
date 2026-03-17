@@ -11,6 +11,8 @@ export function AccidentalTools({
   setMusicXmlFile,
 }: Props) {
   const { hasSelection, locator } = useSelectionSnapshot();
+  const isRestSelected = locator?.target === 'rest';
+  const disabled = !hasSelection || isRestSelected;
 
   const apply = (alter: number, accidentalName: string) => {
     if (!musicXmlFile) return;
@@ -36,7 +38,7 @@ export function AccidentalTools({
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
         onClick={() => apply(0, 'natural')}
-        disabled={!hasSelection}
+        disabled={disabled}
         title="Natural (♮)"
         aria-label="Set note to natural"
       >
@@ -46,7 +48,7 @@ export function AccidentalTools({
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
         onClick={() => apply(1, 'sharp')}
-        disabled={!hasSelection}
+        disabled={disabled}
         title="Sharp (♯)"
         aria-label="Set note to sharp"
       >
@@ -56,7 +58,7 @@ export function AccidentalTools({
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
         onClick={() => apply(-1, 'flat')}
-        disabled={!hasSelection}
+        disabled={disabled}
         title="Flat (♭)"
         aria-label="Set note to flat"
       >
@@ -66,7 +68,7 @@ export function AccidentalTools({
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
         onClick={() => apply(2, 'double-sharp')}
-        disabled={!hasSelection}
+        disabled={disabled}
         title="Double sharp (x)"
         aria-label="Set note to double sharp"
       >
@@ -76,7 +78,7 @@ export function AccidentalTools({
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
         onClick={() => apply(-2, 'double-flat')}
-        disabled={!hasSelection}
+        disabled={disabled}
         title="Double flat (𝄫)"
         aria-label="Set note to double flat"
       >
@@ -86,7 +88,7 @@ export function AccidentalTools({
         type="button"
         className="score-editor__btn score-editor__btn--symbol score-editor__btn--clear"
         onClick={clear}
-        disabled={!hasSelection}
+        disabled={disabled}
         title="Remove accidental (note follows key signature)"
         aria-label="Remove accidental so note follows key signature"
       >
