@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSelectionSnapshot } from '../../helpers/selectionStore';
 import { selectionStoreSetPendingLocator } from '../../helpers/selectionStore';
-import { applyDurationWithReflow } from '../../helpers/durationHelpers';
+import { applyDurationWithReflow, getDurationIdFromXml } from '../../helpers/durationHelpers';
 
 type DurationValue = 'whole' | 'half' | 'quarter' | 'eighth' | '16th' | '32nd' | '64th';
 
@@ -70,8 +70,10 @@ export function DurationTools({ musicXmlFile, setMusicXmlFile }: Props) {
   };
   const [manualSelected, setManualSelected] = useState<DurationValue>('quarter');
   const byId = useMemo(() => new Map(DURATIONS.map((d) => [d.id, d])), []);
+  const selectedFromXml =
+    musicXmlFile && locator ? (getDurationIdFromXml(musicXmlFile, locator as any) as DurationValue | null) : null;
   const selectedFromNote = durationIdFromSelectedNote(selectedNote);
-  const selected = selectedFromNote ?? manualSelected;
+  const selected = selectedFromXml ?? selectedFromNote ?? manualSelected;
 
   return (
     <span className="score-editor__durations" role="group" aria-label="Note duration">

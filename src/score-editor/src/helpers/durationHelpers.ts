@@ -12,6 +12,16 @@ const TYPE_BY_ID: Record<DurationValue, string> = {
   '64th': '64th',
 };
 
+const ID_BY_TYPE: Record<string, DurationValue | undefined> = {
+  whole: 'whole',
+  half: 'half',
+  quarter: 'quarter',
+  eighth: 'eighth',
+  '16th': '16th',
+  '32nd': '32nd',
+  '64th': '64th',
+};
+
 const ORDERED_BASE_TYPES: Array<{ id: DurationValue; quarters: number }> = [
   { id: 'whole', quarters: 4 },
   { id: 'half', quarters: 2 },
@@ -43,6 +53,32 @@ function durationInDivisions(divisions: number, id: DurationValue): number {
 
   const v = Math.round(raw);
   return Math.max(1, v);
+}
+
+export function getDurationIdFromXml(xml: string, locator: NoteLocator): DurationValue | null {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, 'application/xml');
+  const ctx = buildXmlCtx(doc);
+  const { measures } = getPartAndMeasures(doc, ctx, locator);
+  if (!measures) return null;
+  const measureEl = measures[locator.measureIndex] ?? null;
+  if (!measureEl) return null;
+
+  const extracted = extractVoiceEvents(measureEl, measures, ctx, locator);
+  const ev = extracted?.selectedEvent ?? null;
+  if (!ev) return null;
+
+  // Prefer <type> if present on the root note.
+  const typeEl = ctx.getByTag(ev.root, 'type')[0];
+  const rawType = typeEl?.textContent?.trim() ?? '';
+  const mapped = rawType ? ID_BY_TYPE[rawType.toLowerCase()] : undefined;
+  if (mapped) return mapped;
+
+  // Fallback: map <duration> / divisions to nearest base duration.
+  const divisions = extracted?.divisions ?? getActiveDivisionsForMeasure(measures, ctx, locator.measureIndex);
+  const dur = ev.duration;
+  if (!dur || dur <= 0) return null;
+  return bestBaseDurationId(divisions, dur);
 }
 
 function bestBaseDurationId(divisions: number, durationValue: number): DurationValue {
@@ -226,6 +262,7 @@ function extractVoiceEvents(
   const events: VoiceEvent[] = [];
   let currentTime = 0;
   let pitchCounter = 0;
+  let lastTargetNonChordStartTime: number | null = null;
 
   let selectedEvent: VoiceEvent | null = null;
   let selectedChordRootNote: Element | null = null;
@@ -288,11 +325,14 @@ function extractVoiceEvents(
 
     // Note/chord
     if (isChord) {
+      // In MusicXML, <chord/> notes share the previous non-chord note's onset.
+      const chordStartTime =
+        lastTargetNonChordStartTime !== null ? lastTargetNonChordStartTime : Math.max(0, currentTime - dur);
       const last = events[events.length - 1];
-      if (last && last.kind === 'chord' && last.startTime === currentTime) {
+      if (last && last.kind === 'chord' && last.startTime === chordStartTime) {
         last.chordNotes.push(note);
         last.lastEl = note;
-      } else if (last && last.kind === 'note' && last.startTime === currentTime) {
+      } else if (last && last.kind === 'note' && last.startTime === chordStartTime) {
         // Upgrade single note to chord (shouldn't happen often, but keep safe).
         last.kind = 'chord';
         last.chordNotes = [last.root, note];
@@ -301,7 +341,7 @@ function extractVoiceEvents(
         // Chord note without a root in this voice; treat as a standalone note.
         const ev: VoiceEvent = {
           kind: 'note',
-          startTime: currentTime,
+          startTime: chordStartTime,
           duration: dur,
           root: note,
           chordNotes: [],
@@ -322,6 +362,7 @@ function extractVoiceEvents(
         firstChildIndex: ci,
       };
       events.push(ev);
+      lastTargetNonChordStartTime = currentTime;
       currentTime += dur;
     }
   }
