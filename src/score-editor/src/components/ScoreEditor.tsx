@@ -7,6 +7,7 @@ import {
   highlightNoteAtIndex,
   type GraphicNote,
 } from '../helpers/noteSelection';
+import { TopPanel } from './TopPanel';
 import './ScoreEditor.css';
 
 // OSMD: use interface because the package's UMD bundle export doesn't match its .d.ts
@@ -182,94 +183,18 @@ export function ScoreEditor() {
 
   return (
     <div className="score-editor">
-      <div className="score-editor__panel">
-        <button
-          type="button"
-          className="score-editor__btn score-editor__btn--icon-only"
-          onClick={handleOpenFile}
-          title="Open File"
-          aria-label="Open File"
-        >
-          <span className="score-editor__btn-icon" aria-hidden>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
-          </span>
-        </button>
-        <button
-          type="button"
-          className="score-editor__btn score-editor__btn--icon-only"
-          onClick={handleSaveFile}
-          disabled={!currentXml}
-          title="Save File"
-          aria-label="Save File"
-        >
-          <span className="score-editor__btn-icon" aria-hidden>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></svg>
-          </span>
-        </button>
-        <span className="score-editor__separator" aria-hidden />
-        <span className="score-editor__accidentals" role="group" aria-label="Change accidental">
-          <button
-            type="button"
-            className="score-editor__btn score-editor__btn--symbol"
-            onClick={handleNatural}
-            disabled={!hasSelection}
-            title="Natural (♮)"
-            aria-label="Set note to natural"
-          >
-            ♮
-          </button>
-          <button
-            type="button"
-            className="score-editor__btn score-editor__btn--symbol"
-            onClick={handleSharp}
-            disabled={!hasSelection}
-            title="Sharp (♯)"
-            aria-label="Set note to sharp"
-          >
-            ♯
-          </button>
-          <button
-            type="button"
-            className="score-editor__btn score-editor__btn--symbol"
-            onClick={handleFlat}
-            disabled={!hasSelection}
-            title="Flat (♭)"
-            aria-label="Set note to flat"
-          >
-            ♭
-          </button>
-          <button
-            type="button"
-            className="score-editor__btn score-editor__btn--symbol"
-            onClick={handleDoubleSharp}
-            disabled={!hasSelection}
-            title="Double sharp (𝄪)"
-            aria-label="Set note to double sharp"
-          >
-            𝄪
-          </button>
-          <button
-            type="button"
-            className="score-editor__btn score-editor__btn--symbol"
-            onClick={handleDoubleFlat}
-            disabled={!hasSelection}
-            title="Double flat (𝄫)"
-            aria-label="Set note to double flat"
-          >
-            𝄫
-          </button>
-          <button
-            type="button"
-            className="score-editor__btn score-editor__btn--symbol score-editor__btn--clear"
-            onClick={handleClearAccidental}
-            disabled={!hasSelection}
-            title="Remove accidental (note follows key signature)"
-            aria-label="Remove accidental so note follows key signature"
-          >
-            <span className="score-editor__clear-icon" aria-hidden>⌫</span>
-          </button>
-        </span>
-      </div>
+      <TopPanel
+        canSave={!!currentXml}
+        hasSelection={hasSelection}
+        onOpen={handleOpenFile}
+        onSave={handleSaveFile}
+        onNatural={handleNatural}
+        onSharp={handleSharp}
+        onFlat={handleFlat}
+        onDoubleSharp={handleDoubleSharp}
+        onDoubleFlat={handleDoubleFlat}
+        onClearAccidental={handleClearAccidental}
+      />
       <input
         ref={fileInputRef}
         type="file"
