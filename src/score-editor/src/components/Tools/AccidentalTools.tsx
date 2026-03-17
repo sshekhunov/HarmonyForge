@@ -58,10 +58,10 @@ export function AccidentalTools({
         className="score-editor__btn score-editor__btn--symbol"
         onClick={() => apply(2, 'double-sharp')}
         disabled={!hasSelection}
-        title="Double sharp (𝄪)"
+        title="Double sharp (x)"
         aria-label="Set note to double sharp"
       >
-        𝄪
+        x
       </button>
       <button
         type="button"
@@ -82,7 +82,7 @@ export function AccidentalTools({
         aria-label="Remove accidental so note follows key signature"
       >
         <span className="score-editor__clear-icon" aria-hidden>
-          ⌫
+          ⊘
         </span>
       </button>
     </span>

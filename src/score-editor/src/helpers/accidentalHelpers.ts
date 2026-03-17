@@ -31,12 +31,18 @@ export function applyAccidentalToXml(
     if (pitchNoteIndex === noteIndex) {
       const pitch = getByTag(note, 'pitch')[0];
       if (!pitch) break;
+      const isClear = !accidentalName && alter === 0;
       let alterEl = getByTag(pitch, 'alter')[0];
-      if (!alterEl) {
-        alterEl = createEl('alter');
-        pitch.appendChild(alterEl);
+      if (isClear) {
+        // Clear = follow key signature: remove <alter> and <accidental>
+        alterEl?.remove();
+      } else {
+        if (!alterEl) {
+          alterEl = createEl('alter');
+          pitch.appendChild(alterEl);
+        }
+        alterEl.textContent = String(alter);
       }
-      alterEl.textContent = String(alter);
       const accTags = getByTag(note, 'accidental');
       let accEl = accTags[0];
       if (accidentalName) {
@@ -102,6 +108,35 @@ export function applyAccidentalToXmlByLocator(
   const measureEl = measures[locator.measureIndex] ?? null;
   if (!measureEl) return null;
 
+  const getActiveKeyFifths = (): number => {
+    // Walk measures up to current, tracking last <attributes><key><fifths>.
+    // Defaults to C major / A minor (0).
+    let fifths = 0;
+    for (let mi = 0; mi <= locator.measureIndex; mi++) {
+      const m = measures[mi];
+      if (!m) continue;
+      const attrs = getByTag(m, 'attributes')[0];
+      if (!attrs) continue;
+      const key = getByTag(attrs, 'key')[0];
+      if (!key) continue;
+      const fifthsEl = getByTag(key, 'fifths')[0];
+      if (!fifthsEl) continue;
+      const v = Number(fifthsEl.textContent ?? '');
+      if (Number.isFinite(v)) fifths = v;
+    }
+    return fifths;
+  };
+
+  const keyAlterForStep = (step: string, fifths: number): number => {
+    // Order: sharps F C G D A E B ; flats B E A D G C F
+    const sharps = ['F', 'C', 'G', 'D', 'A', 'E', 'B'] as const;
+    const flats = ['B', 'E', 'A', 'D', 'G', 'C', 'F'] as const;
+    const up = step.toUpperCase();
+    if (fifths > 0) return sharps.slice(0, Math.min(7, fifths)).includes(up as any) ? 1 : 0;
+    if (fifths < 0) return flats.slice(0, Math.min(7, -fifths)).includes(up as any) ? -1 : 0;
+    return 0;
+  };
+
   const notes = getByTag(measureEl, 'note');
   let pitchIndex = 0;
   for (let i = 0; i < notes.length; i++) {
@@ -123,12 +158,30 @@ export function applyAccidentalToXmlByLocator(
       const pitch = getByTag(note, 'pitch')[0];
       if (!pitch) break;
 
+      const isClear = !accidentalName && alter === 0;
       let alterEl = getByTag(pitch, 'alter')[0];
-      if (!alterEl) {
-        alterEl = createEl('alter');
-        pitch.appendChild(alterEl);
+      if (isClear) {
+        // Clear = follow key signature: set <alter> to key's default for this step, and remove <accidental>.
+        const stepEl = getByTag(pitch, 'step')[0];
+        const step = stepEl?.textContent?.trim() ?? '';
+        const fifths = getActiveKeyFifths();
+        const keyAlter = step ? keyAlterForStep(step, fifths) : 0;
+        if (keyAlter === 0) {
+          alterEl?.remove();
+        } else {
+          if (!alterEl) {
+            alterEl = createEl('alter');
+            pitch.appendChild(alterEl);
+          }
+          alterEl.textContent = String(keyAlter);
+        }
+      } else {
+        if (!alterEl) {
+          alterEl = createEl('alter');
+          pitch.appendChild(alterEl);
+        }
+        alterEl.textContent = String(alter);
       }
-      alterEl.textContent = String(alter);
 
       const accTags = getByTag(note, 'accidental');
       let accEl = accTags[0];
