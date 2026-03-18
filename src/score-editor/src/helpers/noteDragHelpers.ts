@@ -24,7 +24,6 @@ function clampInt(n: number, min: number, max: number): number {
  */
 export function estimateStaffStepPx(note: GraphicNote | null): number {
   const r = note?.getNoteheadSVGs?.()?.[0]?.getBoundingClientRect?.();
-  // Typical notehead height ~ line spacing. Diatonic step ~= half that.
   const est = r ? r.height / 2 : 6;
   return Math.max(2, Math.min(40, est));
 }
@@ -34,8 +33,6 @@ export function estimateStaffStepPx(note: GraphicNote | null): number {
  */
 export function diatonicStepsFromDragDelta(deltaYPx: number, staffStepPx: number): number {
   const step = staffStepPx > 0 ? staffStepPx : 6;
-  // In screen coords, up is negative deltaY.
-  const raw = -deltaYPx / step;
   return clampInt(raw, -48, 48);
 }
 
@@ -125,7 +122,6 @@ export type NoteDragState = {
   note: GraphicNote;
   locator: NoteLocator;
   noteheadEls: Element[];
-  // Ledger line preview state (created on pointer down, updated on move)
   staffTopY: number;
   staffBottomY: number;
   noteCenterX: number;
@@ -145,12 +141,11 @@ function clearDragPreview(els: Element[]) {
 }
 
 function applyDragPreview(els: Element[], yPx: number) {
-  const px = Math.round(yPx);
   for (const el of els) {
     const html = el as HTMLElement;
     html.style.willChange = 'transform';
     html.style.transformOrigin = 'center';
-    html.style.transform = `translateY(${px}px)`;
+    html.style.transform = `translateY(${yPx}px)`;
   }
 }
 
@@ -183,12 +178,10 @@ function guessStaffBounds(svg: SVGSVGElement, noteCenterX: number, nearY: number
   for (const el of els) {
     const r = (el as SVGGraphicsElement).getBBox?.();
     if (!r) continue;
-    // Staff lines are long and very thin.
     if (r.width < 80) continue;
     if (r.height > 3) continue;
     if (noteCenterX < r.x - 5 || noteCenterX > r.x + r.width + 5) continue;
     const cy = r.y + r.height / 2;
-    // Prefer lines not too far from the clicked note.
     if (Math.abs(cy - nearY) > 300) continue;
     candidates.push({ y: cy, top: r.y, bottom: r.y + r.height });
   }
@@ -220,9 +213,7 @@ function clientToSvg(svgEl: SVGSVGElement, clientX: number, clientY: number): { 
 function estimateSvgUnitsPerPx(svgEl: SVGSVGElement): number {
   const ctm = svgEl.getScreenCTM?.();
   if (!ctm) return 1;
-  // screenCTM maps svg->screen. Inverse maps screen->svg.
   const inv = ctm.inverse();
-  // For mostly-uniform scaling, inv.d is svgUnits per 1px in Y.
   const v = inv.d;
   return Number.isFinite(v) && v !== 0 ? v : 1;
 }
@@ -274,9 +265,7 @@ export type NoteDragStartArgs = {
   fallbackTarget?: Node;
   pointerId: number;
   button: number;
-  /** For clearing previously selected note highlight. */
   prevSelectedNote: GraphicNote | null;
-  /** Callback to update selection + re-render OSMD. */
   onSelect: (note: GraphicNote) => void;
 };
 
@@ -300,7 +289,6 @@ export function noteDragPointerDown(args: NoteDragStartArgs): NoteDragState | nu
   const color = clickedNote.sourceNote.noteheadColor ?? '#c00';
   args.onSelect(clickedNote);
 
-  const staffStepPx = estimateStaffStepPx(clickedNote);
   const noteheadEls = (clickedNote.getNoteheadSVGs?.() ?? []).filter(Boolean) as Element[];
   const firstHead = noteheadEls[0] ?? null;
   const svg = getClosestSvg(firstHead);
@@ -309,20 +297,18 @@ export function noteDragPointerDown(args: NoteDragStartArgs): NoteDragState | nu
 
   applySelectedColorPreview(noteheadEls, color);
 
-  // Prefer stable client->svg coordinate mapping (works under zoom).
-  const headBox = (firstHead as unknown as SVGGraphicsElement | null)?.getBBox?.() ?? null;
-  const noteCenterX = svgPt?.x ?? (headBox ? headBox.x + headBox.width / 2 : 0);
-  const noteCenterYSvg = svgPt?.y ?? (headBox ? headBox.y + headBox.height / 2 : 0);
+   const headBox = (firstHead as unknown as SVGGraphicsElement | null)?.getBBox?.() ?? null;
+   const noteCenterX = headBox ? headBox.x + headBox.width / 2 : (svgPt?.x ?? 0);
+  const noteCenterYSvg = headBox ? headBox.y + headBox.height / 2 : (svgPt?.y ?? 0);
 
-  // Find staff bounds in the same SVG so we can draw ledgers above/below the 5 lines.
   const bounds = svg ? guessStaffBounds(svg, noteCenterX, noteCenterYSvg) : null;
   const staffTopY = bounds?.top ?? (noteCenterYSvg - 4 * estimateStaffStepSvgFromNotehead(firstHead));
   const staffBottomY = bounds?.bottom ?? (noteCenterYSvg + 4 * estimateStaffStepSvgFromNotehead(firstHead));
-  // Staff has 5 lines => 4 line-to-line gaps. Diatonic step is half a gap.
-  const staffStepSvg =
+   const staffStepSvg =
     bounds
       ? Math.max(0.5, Math.min(50, ((staffBottomY - staffTopY) / 4) / 2))
       : estimateStaffStepSvgFromNotehead(firstHead);
+  const staffStepPx = Math.max(1, Math.min(80, staffStepSvg / (svgUnitsPerPx || 1)));
   const ledgerGroup = svg ? ensureLedgerGroup(svg) : null;
 
   return {
@@ -357,15 +343,11 @@ export function noteDragPointerMove(
   if (Math.abs(dy) >= 3) drag.moved = true;
 
   const diatonicSteps = diatonicStepsFromDragDelta(dy, drag.staffStepPx);
-  // OSMD zoom is applied via a CSS scale. translateY is also scaled, so we must
-  // counter-scale the preview translation to match cursor movement in screen px.
   const z = typeof zoom === 'number' && Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
   const snappedDyScreenPx = -diatonicSteps * drag.staffStepPx;
   const snappedDyLocalPx = snappedDyScreenPx / z;
   applyDragPreview(drag.noteheadEls, snappedDyLocalPx);
 
-  // Ledger lines: every 2 steps beyond staff top/bottom lines.
-  // Convert the snapped pixel translation into SVG units (accounts for zoom).
   const snappedDySvg = snappedDyScreenPx * (drag.svgUnitsPerPx || 1);
   const projectedCenterYSvg = drag.noteCenterYSvg + snappedDySvg;
   const beyondTopSteps = Math.max(0, Math.ceil((drag.staffTopY - projectedCenterYSvg) / drag.staffStepSvg));
@@ -382,9 +364,7 @@ export function noteDragPointerMove(
   }
 
   if (drag.ledgerGroup) {
-    // Size ledger a bit wider than notehead.
     const headBox = (drag.noteheadEls[0] as unknown as SVGGraphicsElement | null)?.getBBox?.() ?? null;
-    // Keep ledgers short: roughly notehead width (not spanning the staff).
     const halfWidth = headBox ? Math.max(5, headBox.width * 0.7) : 10;
     drawLedgerLines(drag.ledgerGroup, drag.noteCenterX, halfWidth, ys, drag.color);
   }
