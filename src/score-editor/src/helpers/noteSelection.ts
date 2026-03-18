@@ -221,6 +221,7 @@ function getVoiceIdFromSourceNote(sourceNote: unknown): string | undefined {
   return undefined;
 }
 
+/** Builds a NoteLocator for the given OSMD source note by traversing the measure list in MusicXML order. */
 export function getSelectedNoteLocator(
   measureList: MeasureList,
   selectedSourceNote: unknown
@@ -283,6 +284,7 @@ export function getSelectedNoteLocator(
   };
 }
 
+/** Finds the graphic note matching the locator and sets its noteheadColor; returns that note or null. */
 export function highlightNoteByLocator(
   measureList: MeasureList,
   locator: NoteLocator,

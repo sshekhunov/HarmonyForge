@@ -18,63 +18,47 @@ const state: State = {
 
 const listeners = new Set<() => void>();
 
-/**
- * Notifies all subscribers about store changes.
- */
+/** Notifies all subscribers about store changes. */
 function emit() {
   for (const l of listeners) l();
 }
 
-/**
- * Stores the OSMD measure list graph used for hit-testing and locator mapping.
- */
+/** Stores the OSMD measure list graph used for hit-testing and locator mapping. */
 export function selectionStoreSetMeasureList(measureList: MeasureList | null) {
   state.measureList = measureList;
   emit();
 }
 
-/**
- * Stores the currently selected graphic note.
- */
+/** Stores the currently selected graphic note. */
 export function selectionStoreSetSelectedNote(note: GraphicNote | null) {
   state.selectedNote = note;
   emit();
 }
 
-/**
- * Clears the current selection.
- */
+/** Clears the current selection. */
 export function selectionStoreClearSelection() {
   state.selectedNote = null;
   emit();
 }
 
-/**
- * Stores a locator that should be re-highlighted after rerender/load.
- */
+/** Stores a locator that should be re-highlighted after rerender/load. */
 export function selectionStoreSetPendingLocator(locator: NoteLocator | null) {
   state.pendingLocator = locator;
   emit();
 }
 
-/**
- * Returns the pending locator without clearing it.
- */
+/** Returns the pending locator without clearing it. */
 export function selectionStorePeekPendingLocator(): NoteLocator | null {
   return state.pendingLocator;
 }
 
-/**
- * Clears the pending locator.
- */
+/** Clears the pending locator. */
 export function selectionStoreClearPendingLocator() {
   state.pendingLocator = null;
   emit();
 }
 
-/**
- * Builds a snapshot for React subscribers (selection + derived locator).
- */
+/** Builds a snapshot for React subscribers (selection + derived locator). */
 function getSnapshot() {
   const hasSelection = !!state.selectedNote?.sourceNote;
   const locator =
@@ -88,9 +72,7 @@ function getSnapshot() {
   };
 }
 
-/**
- * React hook to subscribe to selection store changes.
- */
+/** React hook to subscribe to selection store changes. */
 export function useSelectionSnapshot() {
   const [snap, setSnap] = useState(getSnapshot);
   useEffect(() => {

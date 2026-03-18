@@ -252,7 +252,7 @@ export function ScoreEditor() {
       if (!drag?.active) return;
       if (e.pointerId !== drag.pointerId) return;
 
-      noteDragPointerMove(drag, e.clientY, zoom);
+      noteDragPointerMove(drag, e.clientX, e.clientY, zoom);
       e.preventDefault();
       e.stopPropagation();
     },
@@ -265,6 +265,8 @@ export function ScoreEditor() {
       if (!drag?.active) return;
       if (e.pointerId !== drag.pointerId) return;
 
+      selectedNoteRef.current = null;
+      selectionStoreSetSelectedNote(null);
       noteDragPointerUp(drag, musicDoc, selectionStoreSetPendingLocator, (doc) => applyDocChange(doc));
       dragRef.current = null;
       e.preventDefault();

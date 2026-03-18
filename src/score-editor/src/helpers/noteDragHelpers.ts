@@ -7,11 +7,14 @@ import { clearNoteHighlight, findClickedNote, getSelectedNoteLocator } from './n
 import type { MeasureList } from '../models/osmd';
 
 const STEPS: Array<MusicXmlPitch['step']> = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const STEP_TO_SEMITONE: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
+/** Type guard: true if the string is a valid MusicXML pitch step (C–B). */
 function isStep(s: string): s is MusicXmlPitch['step'] {
   return STEPS.includes(s as any);
 }
 
+/** Clamps a value to an integer in [min, max]; invalid numbers yield min. */
 function clampInt(n: number, min: number, max: number): number {
   const v = Math.round(n);
   if (!Number.isFinite(v)) return min;
@@ -57,6 +60,150 @@ export function transposePitchDiatonic(pitch: MusicXmlPitch, diatonicSteps: numb
     step: STEPS[nextIdx]!,
     octave: pitch.octave + octaveDelta,
   };
+}
+
+/** Converts a MusicXML pitch to a MIDI-like number for ordering; returns NaN if step is invalid. */
+function pitchToMidi(p: MusicXmlPitch): number {
+  const step = (p.step ?? '').toUpperCase();
+  if (!(step in STEP_TO_SEMITONE)) return Number.NaN;
+  const base = STEP_TO_SEMITONE[step]!;
+  const alter = typeof p.alter === 'number' && Number.isFinite(p.alter) ? p.alter : 0;
+  const octave = typeof p.octave === 'number' && Number.isFinite(p.octave) ? p.octave : 0;
+  return (octave + 1) * 12 + base + alter;
+}
+
+/** Returns pitchToMidi(p) or a large tiebreak value so invalid pitches sort stably. */
+function safeMidi(p: MusicXmlPitch, tiebreak: number): number {
+  const m = pitchToMidi(p);
+  return Number.isFinite(m) ? m : 1_000_000 + tiebreak;
+}
+
+/** True if the note matches the locator’s staff and (when set) voice. */
+function matchesStaffVoice(note: { staff: number; voice?: string }, locator: NoteLocator): boolean {
+  if (note.staff !== locator.staffNumber) return false;
+  if (locator.voice && note.voice && note.voice !== locator.voice) return false;
+  return true;
+}
+
+/** Finds the measure element index and part index for the note at locator.indexInMeasure (staff/voice filtered). */
+function locatePitchedElementIndex(
+  doc: MusicXmlDocument,
+  locator: NoteLocator
+): { partIndex: number; measureIndex: number; elementIndex: number } | null {
+  const part = getIndexedPart(doc, locator.partId);
+  if (!part) return null;
+  const partIndex = doc.parts.indexOf(part);
+  const measure = part.measures[locator.measureIndex];
+  if (!measure) return null;
+  let pitchIndex = 0;
+  for (let i = 0; i < measure.elements.length; i++) {
+    const el = measure.elements[i] as any;
+    if (el?.kind !== 'note') continue;
+    if (!matchesStaffVoice(el, locator)) continue;
+    if (!el.pitch) continue;
+    if (pitchIndex === locator.indexInMeasure) return { partIndex, measureIndex: locator.measureIndex, elementIndex: i };
+    pitchIndex++;
+  }
+  return null;
+}
+
+/** Returns the pitch index (indexInMeasure) for the given element index after chord notes are ordered by pitch. */
+function recomputeIndexInMeasureForElement(doc: MusicXmlDocument, locator: NoteLocator, elementIndex: number): number | null {
+  const part = getIndexedPart(doc, locator.partId);
+  if (!part) return null;
+  const measure = part.measures[locator.measureIndex];
+  if (!measure) return null;
+
+  type NoteWithIdx = { elementIndex: number; pitch: MusicXmlPitch };
+  const ordered: NoteWithIdx[] = [];
+  let currentChord: NoteWithIdx[] = [];
+
+  const flushChord = () => {
+    if (!currentChord.length) return;
+    currentChord.sort((a, b) => safeMidi(a.pitch, a.elementIndex) - safeMidi(b.pitch, b.elementIndex));
+    ordered.push(...currentChord);
+    currentChord = [];
+  };
+
+  for (let i = 0; i < measure.elements.length; i++) {
+    const el = measure.elements[i] as any;
+    if (el?.kind !== 'note') continue;
+    if (!matchesStaffVoice(el, locator)) continue;
+    if (!el.pitch) continue;
+    if (!el.chord) flushChord();
+    currentChord.push({ elementIndex: i, pitch: el.pitch as MusicXmlPitch });
+  }
+  flushChord();
+
+  let idxInMeasure = 0;
+  for (const n of ordered) {
+    if (n.elementIndex === elementIndex) return idxInMeasure;
+    idxInMeasure++;
+  }
+  return null;
+}
+
+/** Applies pitch drag, then reorders the chord by pitch and returns the doc and new element index for the moved note. */
+function applyPitchDragWithChordReorder(
+  current: MusicXmlDocument,
+  locator: NoteLocator,
+  diatonicSteps: number
+): { doc: MusicXmlDocument; elementIndex: number } | null {
+  const loc = locatePitchedElementIndex(current, locator);
+  if (!loc) return null;
+  const next0 = applyPitchDragDiatonic(current, locator, diatonicSteps);
+  if (!next0) return null;
+
+  const doc = structuredClone(next0) as MusicXmlDocument;
+  const part = getIndexedPart(doc, locator.partId);
+  const measure = part?.measures[locator.measureIndex];
+  if (!part || !measure) return { doc: next0, elementIndex: loc.elementIndex };
+
+  const start = (() => {
+    let i = loc.elementIndex;
+    while (i > 0) {
+      const prev = measure.elements[i - 1] as any;
+      if (prev?.kind !== 'note') break;
+      if (!matchesStaffVoice(prev, locator)) break;
+      if (!prev.pitch) break;
+      if (!prev.chord) break;
+      i--;
+    }
+    return i;
+  })();
+  const end = (() => {
+    let i = loc.elementIndex;
+    while (i + 1 < measure.elements.length) {
+      const next = measure.elements[i + 1] as any;
+      if (next?.kind !== 'note') break;
+      if (!matchesStaffVoice(next, locator)) break;
+      if (!next.pitch) break;
+      if (!next.chord) break;
+      i++;
+    }
+    return i;
+  })();
+
+  if (end <= start) {
+    return { doc: doc, elementIndex: loc.elementIndex };
+  }
+
+  const slice = measure.elements.slice(start, end + 1) as any[];
+  const wrapped = slice.map((el, idx) => ({
+    el,
+    oldAbsIndex: start + idx,
+    midi: el?.pitch ? safeMidi(el.pitch as MusicXmlPitch, start + idx) : 1_000_000 + (start + idx),
+  }));
+  wrapped.sort((a, b) => a.midi - b.midi);
+  const sortedEls = wrapped.map((w, idx) => {
+    const e = w.el;
+    return { ...e, chord: idx === 0 ? false : true };
+  });
+
+  measure.elements.splice(start, end - start + 1, ...sortedEls);
+
+  const newElementIndex = start + wrapped.findIndex((w) => w.oldAbsIndex === loc.elementIndex);
+  return { doc, elementIndex: newElementIndex >= start ? newElementIndex : loc.elementIndex };
 }
 
 /**
@@ -115,7 +262,9 @@ export type NoteDragState = {
   active: boolean;
   moved: boolean;
   pointerId: number;
+  startClientX: number;
   startClientY: number;
+  lastClientX: number;
   lastClientY: number;
   staffStepPx: number;
   staffStepSvg: number;
@@ -129,8 +278,10 @@ export type NoteDragState = {
   noteCenterYSvg: number;
   ledgerGroup: SVGGElement | null;
   svgUnitsPerPx: number;
+  svgEl: SVGSVGElement | null;
 };
 
+/** Removes transform and transition styles from the dragged notehead elements. */
 function clearDragPreview(els: Element[]) {
   for (const el of els) {
     const html = el as HTMLElement;
@@ -141,6 +292,7 @@ function clearDragPreview(els: Element[]) {
   }
 }
 
+/** Applies a vertical translateY (px) to the given elements for drag preview. */
 function applyDragPreview(els: Element[], yPx: number) {
   for (const el of els) {
     const html = el as HTMLElement;
@@ -150,6 +302,7 @@ function applyDragPreview(els: Element[], yPx: number) {
   }
 }
 
+/** Sets fill and stroke to the given color on the elements and their path/ellipse/circle/rect children. */
 function applySelectedColorPreview(els: Element[], color: string) {
   for (const el of els) {
     const root = el as unknown as Element;
@@ -164,6 +317,24 @@ function applySelectedColorPreview(els: Element[], color: string) {
   }
 }
 
+/** For a chord note, returns only the single notehead element for that note; otherwise returns all noteheads. */
+function getSingleNoteheadElements(note: GraphicNote): Element[] {
+  const heads = (note.getNoteheadSVGs?.() ?? []).filter(Boolean) as Element[];
+  if (heads.length <= 1) return heads;
+  const chordNotes = (note.parentVoiceEntry?.notes ?? []) as unknown as GraphicNote[];
+  if (Array.isArray(chordNotes) && chordNotes.length > 1 && heads.length === chordNotes.length) {
+    const idx = chordNotes.indexOf(note);
+    if (idx >= 0) {
+      const head = heads[idx];
+      return head ? [head] : heads;
+    }
+  }
+
+  // Fallback: if chord mapping isn't available, use the first head only (best effort).
+  return heads[0] ? [heads[0]] : heads;
+}
+
+/** Walks up from the element to the nearest ancestor SVGSVGElement. */
 function getClosestSvg(el: Element | null): SVGSVGElement | null {
   let cur: Element | null = el;
   while (cur) {
@@ -173,6 +344,7 @@ function getClosestSvg(el: Element | null): SVGSVGElement | null {
   return null;
 }
 
+/** Finds the top and bottom Y (SVG units) of the five staff lines near the given note position. */
 function guessStaffBounds(svg: SVGSVGElement, noteCenterX: number, nearY: number): { top: number; bottom: number } | null {
   const candidates: Array<{ y: number; top: number; bottom: number }> = [];
   const els = svg.querySelectorAll('path, line');
@@ -195,6 +367,7 @@ function guessStaffBounds(svg: SVGSVGElement, noteCenterX: number, nearY: number
   return { top, bottom };
 }
 
+/** Estimates one diatonic staff step in SVG units from the notehead’s bounding box height. */
 function estimateStaffStepSvgFromNotehead(notehead: Element | null): number {
   const g = notehead as unknown as SVGGraphicsElement | null;
   const r = g?.getBBox?.();
@@ -202,6 +375,7 @@ function estimateStaffStepSvgFromNotehead(notehead: Element | null): number {
   return Math.max(0.5, Math.min(50, est));
 }
 
+/** Converts client (viewport) coordinates to SVG user space using the SVG’s screen CTM inverse. */
 function clientToSvg(svgEl: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } | null {
   try {
     const ctm = svgEl.getScreenCTM?.();
@@ -224,6 +398,7 @@ function clientToSvg(svgEl: SVGSVGElement, clientX: number, clientY: number): { 
   }
 }
 
+/** Approximates SVG units per screen pixel (Y) from the SVG’s screen CTM inverse. */
 function estimateSvgUnitsPerPx(svgEl: SVGSVGElement): number {
   const ctm = svgEl.getScreenCTM?.();
   if (!ctm) return 1;
@@ -232,6 +407,7 @@ function estimateSvgUnitsPerPx(svgEl: SVGSVGElement): number {
   return Number.isFinite(v) && v !== 0 ? v : 1;
 }
 
+/** Creates and appends a ledger-line group to the SVG; reuses existing one if present. */
 function ensureLedgerGroup(svg: SVGSVGElement): SVGGElement {
   const ns = 'http://www.w3.org/2000/svg';
   const g = document.createElementNS(ns, 'g');
@@ -240,16 +416,19 @@ function ensureLedgerGroup(svg: SVGSVGElement): SVGGElement {
   return g;
 }
 
+/** Removes all child elements from the ledger group. */
 function clearLedgerLines(group: SVGGElement | null) {
   if (!group) return;
   while (group.firstChild) group.removeChild(group.firstChild);
 }
 
+/** Removes the ledger group from its parent. */
 function removeLedgerGroup(group: SVGGElement | null) {
   if (!group) return;
   group.parentNode?.removeChild(group);
 }
 
+/** Draws horizontal ledger lines at the given Y positions (SVG units), centered on noteCenterX. */
 function drawLedgerLines(
   group: SVGGElement,
   noteCenterX: number,
@@ -283,6 +462,7 @@ export type NoteDragStartArgs = {
   onSelect: (note: GraphicNote) => void;
 };
 
+/** Handles pointer down: resolves clicked note, builds drag state (staff/ledger/SVG refs), and returns it or null. */
 export function noteDragPointerDown(args: NoteDragStartArgs): NoteDragState | null {
   if (args.button !== 0) return null;
 
@@ -303,7 +483,7 @@ export function noteDragPointerDown(args: NoteDragStartArgs): NoteDragState | nu
   const color = clickedNote.sourceNote.noteheadColor ?? '#c00';
   args.onSelect(clickedNote);
 
-  const noteheadEls = (clickedNote.getNoteheadSVGs?.() ?? []).filter(Boolean) as Element[];
+  const noteheadEls = getSingleNoteheadElements(clickedNote);
   const firstHead = noteheadEls[0] ?? null;
   const svg = getClosestSvg(firstHead);
   const svgUnitsPerPx = svg ? estimateSvgUnitsPerPx(svg) : 1;
@@ -329,7 +509,9 @@ export function noteDragPointerDown(args: NoteDragStartArgs): NoteDragState | nu
     active: true,
     moved: false,
     pointerId: args.pointerId,
+    startClientX: args.clientX,
     startClientY: args.clientY,
+    lastClientX: args.clientX,
     lastClientY: args.clientY,
     staffStepPx,
     staffStepSvg,
@@ -343,27 +525,37 @@ export function noteDragPointerDown(args: NoteDragStartArgs): NoteDragState | nu
     noteCenterYSvg,
     ledgerGroup,
     svgUnitsPerPx,
+    svgEl: svg ?? null,
   };
 }
 
+/** Updates drag preview (translateY, ledger lines) from current pointer position and zoom. */
 export function noteDragPointerMove(
   drag: NoteDragState,
+  clientX: number,
   clientY: number,
   zoom: number
 ): void {
   if (!drag.active) return;
   const dy = clientY - drag.startClientY;
+  drag.lastClientX = clientX;
   drag.lastClientY = clientY;
   if (Math.abs(dy) >= 3) drag.moved = true;
 
-  const diatonicSteps = diatonicStepsFromDragDelta(dy, drag.staffStepPx);
+  const diatonicSteps = (() => {
+    const svg = drag.svgEl;
+    if (!svg) return diatonicStepsFromDragDelta(dy, drag.staffStepPx);
+    const cur = clientToSvg(svg, clientX, clientY);
+    if (!cur) return diatonicStepsFromDragDelta(dy, drag.staffStepPx);
+    const deltaSvgY = cur.y - drag.noteCenterYSvg;
+    return clampInt(-deltaSvgY / (drag.staffStepSvg || 1), -48, 48);
+  })();
   const z = typeof zoom === 'number' && Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
-  const snappedDyScreenPx = -diatonicSteps * drag.staffStepPx;
+  const snappedDyScreenPx = (-diatonicSteps * drag.staffStepSvg) / (drag.svgUnitsPerPx || 1);
   const snappedDyLocalPx = snappedDyScreenPx / z;
   applyDragPreview(drag.noteheadEls, snappedDyLocalPx);
 
-  const snappedDySvg = snappedDyScreenPx * (drag.svgUnitsPerPx || 1);
-  const projectedCenterYSvg = drag.noteCenterYSvg + snappedDySvg;
+  const projectedCenterYSvg = drag.noteCenterYSvg + (-diatonicSteps * drag.staffStepSvg);
   const beyondTopSteps = Math.max(0, Math.ceil((drag.staffTopY - projectedCenterYSvg) / drag.staffStepSvg));
   const beyondBottomSteps = Math.max(0, Math.ceil((projectedCenterYSvg - drag.staffBottomY) / drag.staffStepSvg));
 
@@ -384,6 +576,7 @@ export function noteDragPointerMove(
   }
 }
 
+/** Cleans up drag state: clears preview transform and ledger group, marks drag inactive. */
 export function noteDragPointerCancel(
   drag: NoteDragState,
 ): void {
@@ -394,6 +587,7 @@ export function noteDragPointerCancel(
   drag.ledgerGroup = null;
 }
 
+/** On pointer up: applies pitch change with chord reorder, recomputes indexInMeasure, sets pending locator and doc. */
 export function noteDragPointerUp(
   drag: NoteDragState,
   currentDoc: MusicXmlDocument | null,
@@ -412,9 +606,12 @@ export function noteDragPointerUp(
   const diatonicSteps = diatonicStepsFromDragDelta(dy, drag.staffStepPx);
   if (diatonicSteps === 0) return;
 
-  const next = applyPitchDragDiatonic(currentDoc, drag.locator, diatonicSteps);
-  if (!next) return;
-  setPendingLocator(drag.locator);
-  setDoc(next);
+  const applied = applyPitchDragWithChordReorder(currentDoc, drag.locator, diatonicSteps);
+  if (!applied) return;
+  const nextIndex = recomputeIndexInMeasureForElement(applied.doc, drag.locator, applied.elementIndex);
+  const nextLocator =
+    typeof nextIndex === 'number' ? { ...drag.locator, indexInMeasure: nextIndex } : drag.locator;
+  setPendingLocator(nextLocator);
+  setDoc(applied.doc);
 }
 
