@@ -1,6 +1,7 @@
 import { Redo2, Undo2 } from 'lucide-react';
 import { historyMarkApplying, historyRedo, historyUndo, useHistorySnapshot } from '../../services/historyService';
 import type { MusicXmlDocument } from '../../models/musicXmlDocument';
+import { musicXmlFromString, musicXmlToString } from '../../helpers/musicXmlHelper';
 
 type Props = {
   musicDoc: MusicXmlDocument | null;
@@ -12,18 +13,18 @@ export function HistoryTools({ musicDoc, setMusicDoc }: Props) {
 
   const onUndo = () => {
     if (!musicDoc) return;
-    const prev = historyUndo(musicDoc);
-    if (!prev) return;
+    const prevXml = historyUndo(musicXmlToString(musicDoc));
+    if (!prevXml) return;
     historyMarkApplying();
-    setMusicDoc(prev);
+    setMusicDoc(musicXmlFromString(prevXml));
   };
 
   const onRedo = () => {
     if (!musicDoc) return;
-    const next = historyRedo(musicDoc);
-    if (!next) return;
+    const nextXml = historyRedo(musicXmlToString(musicDoc));
+    if (!nextXml) return;
     historyMarkApplying();
-    setMusicDoc(next);
+    setMusicDoc(musicXmlFromString(nextXml));
   };
 
   return (

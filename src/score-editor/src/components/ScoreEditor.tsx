@@ -207,7 +207,7 @@ export function ScoreEditor() {
           if (!prevDoc) {
             historyReset();
           } else if (!historyIsApplying() && nextDoc) {
-            historyRecord(prevDoc, nextDoc);
+            historyRecord(musicXmlToString(prevDoc), musicXmlToString(nextDoc));
           }
           historyClearApplying();
           setMusicDoc(nextDoc);
