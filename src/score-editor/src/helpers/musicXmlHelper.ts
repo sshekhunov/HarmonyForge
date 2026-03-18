@@ -6,7 +6,13 @@ import type {
   MusicXmlNote,
   MusicXmlPart,
 } from '../models/musicXmlDocument';
+import type { NoteLocator } from '../models/musicXml';
+import type { MusicXmlExtractVoiceEventsResult, MusicXmlVoiceEvent } from '../models/musicXmlVoiceEvents';
+import { isMusicXmlNote } from '../models/musicXmlVoiceEvents';
 
+/**
+ * Returns the first direct child element by name.
+ */
 function firstChildElement(parent: Element, name: string): Element | null {
   for (let i = 0; i < parent.children.length; i++) {
     const c = parent.children.item(i);
@@ -16,12 +22,18 @@ function firstChildElement(parent: Element, name: string): Element | null {
   return null;
 }
 
+/**
+ * Reads trimmed text content from a direct child element.
+ */
 function childText(parent: Element, name: string): string | null {
   const el = firstChildElement(parent, name);
   const v = el?.textContent ?? null;
   return v && v.trim().length > 0 ? v.trim() : null;
 }
 
+/**
+ * Reads a numeric value from a direct child element's text.
+ */
 function childNumber(parent: Element, name: string): number | null {
   const t = childText(parent, name);
   if (t == null) return null;
@@ -29,10 +41,17 @@ function childNumber(parent: Element, name: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Serializes an element to XML, preserving its namespace and attributes.
+ */
 function serializeElement(el: Element): string {
   return new XMLSerializer().serializeToString(el);
 }
 
+/**
+ * Parses a `<note>` element into the editor's note model.
+ * Also stores the original XML so reserialization preserves beams and vendor extensions.
+ */
 function parseNote(noteEl: Element): MusicXmlNote {
   const staff = childNumber(noteEl, 'staff') ?? 1;
   const voice = childText(noteEl, 'voice') ?? undefined;
@@ -75,6 +94,9 @@ function parseNote(noteEl: Element): MusicXmlNote {
   };
 }
 
+/**
+ * Parses measure `<attributes>` into a model plus a raw XML snapshot for round-trip fidelity.
+ */
 function parseAttributes(attrsEl: Element): MusicXmlAttributes {
   const divisions = childNumber(attrsEl, 'divisions') ?? undefined;
   const keyEl = firstChildElement(attrsEl, 'key');
@@ -82,6 +104,10 @@ function parseAttributes(attrsEl: Element): MusicXmlAttributes {
   return { kind: 'attributes', divisions, keyFifths, rawXml: serializeElement(attrsEl) };
 }
 
+/**
+ * Parses a `<measure>` into a stable in-order element list.
+ * Unknown elements are kept as raw XML for lossless reserialization.
+ */
 function parseMeasure(measureEl: Element, measureIndex: number): MusicXmlMeasure {
   const number = measureEl.getAttribute('number') ?? undefined;
   const elements: MusicXmlMeasureElement[] = [];
@@ -106,6 +132,9 @@ function parseMeasure(measureEl: Element, measureIndex: number): MusicXmlMeasure
   return { measureIndex, number, elements };
 }
 
+/**
+ * Parses a `<part>` into measures in document order.
+ */
 function parsePart(partEl: Element): MusicXmlPart {
   const id = partEl.getAttribute('id') ?? undefined;
   const measures: MusicXmlMeasure[] = [];
@@ -118,6 +147,10 @@ function parsePart(partEl: Element): MusicXmlPart {
   return { id, measures };
 }
 
+/**
+ * Converts an input MusicXML string into score models for the editor.
+ * Stores the original XML so serialization can patch measures in-place later.
+ */
 export function musicXmlFromString(xml: string): MusicXmlDocument {
   const parser = new DOMParser();
   const dom = parser.parseFromString(xml, 'application/xml');
@@ -141,6 +174,9 @@ export function musicXmlFromString(xml: string): MusicXmlDocument {
   return { sourceXml: xml, headerRawElements, version, parts };
 }
 
+/**
+ * Appends a raw XML fragment into a parent element, preserving the document namespace.
+ */
 function appendRawXml(doc: Document, parent: Element, rawXml: string) {
   const ns = doc.documentElement?.namespaceURI ?? 'http://www.musicxml.org/ns/musicxml';
   const parser = new DOMParser();
@@ -154,6 +190,9 @@ function appendRawXml(doc: Document, parent: Element, rawXml: string) {
   }
 }
 
+/**
+ * Finds an existing direct child element or creates one.
+ */
 function getOrCreateChild(doc: Document, parent: Element, name: string): Element {
   const ns = doc.documentElement?.namespaceURI ?? null;
   const list = ns ? parent.getElementsByTagNameNS(ns, name) : parent.getElementsByTagName(name);
@@ -173,6 +212,9 @@ function getOrCreateChild(doc: Document, parent: Element, name: string): Element
   return created;
 }
 
+/**
+ * Removes all direct children with the given name.
+ */
 function removeDirectChildren(parent: Element, name: string) {
   const toRemove: Element[] = [];
   for (let i = 0; i < parent.children.length; i++) {
@@ -184,6 +226,10 @@ function removeDirectChildren(parent: Element, name: string) {
   for (const c of toRemove) parent.removeChild(c);
 }
 
+/**
+ * Builds a `<note>` element by starting from the original XML and patching only editable fields.
+ * This preserves beaming, stems, articulations, and any unknown sub-elements.
+ */
 function buildNote(doc: Document, n: MusicXmlNote): Element {
   const ns = doc.documentElement?.namespaceURI ?? null;
   const createEl = (name: string) => (ns ? doc.createElementNS(ns, name) : doc.createElement(name));
@@ -264,6 +310,9 @@ function buildNote(doc: Document, n: MusicXmlNote): Element {
   return noteEl;
 }
 
+/**
+ * Serializes the current score model by patching measure contents into the original XML document.
+ */
 export function musicXmlToString(model: MusicXmlDocument): string {
   const parser = new DOMParser();
   const dom = parser.parseFromString(model.sourceXml, 'application/xml');
@@ -331,6 +380,9 @@ export function musicXmlToString(model: MusicXmlDocument): string {
   return new XMLSerializer().serializeToString(dom);
 }
 
+/**
+ * Returns the requested part by id, falling back to the first part.
+ */
 export function getIndexedPart(doc: MusicXmlDocument, partId?: string): MusicXmlPart | null {
   if (partId) {
     const exact = doc.parts.find((p) => p.id === partId);
@@ -339,7 +391,140 @@ export function getIndexedPart(doc: MusicXmlDocument, partId?: string): MusicXml
   return doc.parts[0] ?? null;
 }
 
-export function rebuildMusicXmlIndexes(doc: MusicXmlDocument): MusicXmlDocument {
-  return doc;
+/**
+ * Returns the divisions value active at a measure index by scanning earlier attributes.
+ */
+export function getActiveDivisionsForMeasure(measures: MusicXmlMeasure[], measureIndex: number): number {
+  let divs = 1;
+  for (let mi = 0; mi <= measureIndex; mi++) {
+    const measure = measures[mi];
+    if (!measure) continue;
+    for (const e of measure.elements) {
+      if (e.kind !== 'attributes') continue;
+      const v = e.divisions;
+      if (typeof v === 'number' && Number.isFinite(v) && v > 0) divs = v;
+    }
+  }
+  return divs;
+}
+
+/**
+ * Extracts time-ordered events for the selected staff(/voice) within a measure.
+ * Also resolves the selected event (pitch or rest) based on the locator.
+ */
+export function extractVoiceEvents(
+  measure: MusicXmlMeasure,
+  measures: MusicXmlMeasure[],
+  locator: NoteLocator
+): MusicXmlExtractVoiceEventsResult {
+  const divisions = getActiveDivisionsForMeasure(measures, locator.measureIndex);
+  const elements = measure.elements;
+
+  const events: MusicXmlVoiceEvent[] = [];
+  let currentTime = 0;
+  let lastTargetNonChordStartTime: number | null = null;
+
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i]!;
+    if (el.kind === 'backup') {
+      currentTime = Math.max(0, currentTime - Math.max(0, el.duration));
+      continue;
+    }
+    if (el.kind === 'forward') {
+      currentTime += Math.max(0, el.duration);
+      continue;
+    }
+    if (!isMusicXmlNote(el)) continue;
+
+    const matches =
+      el.staff === locator.staffNumber && (!locator.voice || !el.voice || el.voice === locator.voice);
+    if (!matches) {
+      if (!el.chord) currentTime += Math.max(0, el.duration);
+      continue;
+    }
+
+    const dur = Math.max(0, el.duration);
+    const isChord = el.chord;
+    const isRest = !el.pitch;
+
+    if (isRest) {
+      events.push({
+        kind: 'rest',
+        startTime: currentTime,
+        duration: dur,
+        root: el,
+        chordNotes: [],
+        elementIndexes: [i],
+      });
+      currentTime += dur;
+      continue;
+    }
+
+    if (isChord) {
+      const chordStartTime =
+        lastTargetNonChordStartTime !== null ? lastTargetNonChordStartTime : Math.max(0, currentTime - dur);
+      const last = events[events.length - 1];
+      if (last && last.kind === 'chord' && last.startTime === chordStartTime) {
+        last.chordNotes.push(el);
+        last.elementIndexes.push(i);
+      } else if (last && last.kind === 'note' && last.startTime === chordStartTime) {
+        last.kind = 'chord';
+        last.chordNotes = [last.root, el];
+        last.elementIndexes.push(i);
+      } else {
+        events.push({
+          kind: 'note',
+          startTime: chordStartTime,
+          duration: dur,
+          root: el,
+          chordNotes: [],
+          elementIndexes: [i],
+        });
+      }
+      continue;
+    }
+
+    events.push({
+      kind: 'note',
+      startTime: currentTime,
+      duration: dur,
+      root: el,
+      chordNotes: [],
+      elementIndexes: [i],
+    });
+    lastTargetNonChordStartTime = currentTime;
+    currentTime += dur;
+  }
+
+  const measureTotal = events.reduce((sum, e) => sum + e.duration, 0);
+
+  let selectedEvent: MusicXmlVoiceEvent | null = null;
+  let oldSelectedDuration = 0;
+
+  if (locator.target === 'rest' && typeof locator.eventIndex === 'number') {
+    const ev = events[locator.eventIndex] ?? null;
+    if (ev?.kind === 'rest') {
+      selectedEvent = ev;
+      oldSelectedDuration = ev.duration;
+    }
+  } else {
+    let pitchIndex = 0;
+    for (const ev of events) {
+      const candidates =
+        ev.kind === 'chord' ? (ev.chordNotes.length ? ev.chordNotes : [ev.root]) : [ev.root];
+      for (const n of candidates) {
+        if (!n.pitch) continue;
+        if (pitchIndex === locator.indexInMeasure) {
+          selectedEvent = ev;
+          oldSelectedDuration = ev.duration;
+          break;
+        }
+        pitchIndex++;
+      }
+      if (selectedEvent) break;
+    }
+  }
+
+  return { events, selectedEvent, oldSelectedDuration, measureTotal, divisions };
 }
 

@@ -6,6 +6,10 @@
 import type { GraphicNote, MeasureList } from '../models/osmd';
 import type { NoteLocator } from '../models/musicXml';
 
+/**
+ * Normalizes OSMD's measure list into a simple traversal strategy so selection order
+ * matches the MusicXML ordering used by locators.
+ */
 function getMeasureListGraph(measureList: MeasureList): {
   numArrays: number;
   numMeasures: number;
@@ -167,18 +171,27 @@ export function clearNoteHighlight(note: GraphicNote | null): void {
   }
 }
 
+/**
+ * Reads the 0-based measure index from an OSMD source note.
+ */
 function getMeasureIndexFromSourceNote(sourceNote: unknown): number | null {
   const sm = (sourceNote as { SourceMeasure?: { measureListIndex?: number; MeasureListIndex?: number } })?.SourceMeasure;
   const idx = sm ? (sm.measureListIndex ?? sm.MeasureListIndex) : undefined;
   return typeof idx === 'number' && Number.isFinite(idx) ? idx : null;
 }
 
+/**
+ * Reads the staff id from an OSMD source note.
+ */
 function getStaffIdFromSourceNote(sourceNote: unknown): number | null {
   const staff = (sourceNote as { ParentStaff?: { Id?: number; idInMusicSheet?: number } })?.ParentStaff;
   const id = staff ? (staff.Id ?? staff.idInMusicSheet) : undefined;
   return typeof id === 'number' && Number.isFinite(id) ? id : null;
 }
 
+/**
+ * Converts OSMD staff ids to MusicXML staff numbers (1-based).
+ */
 function toMusicXmlStaffNumber(osmdStaffId: number): number {
   // OSMD staff id is inconsistent across versions/scores:
   // sometimes 0-based within part (0,1), sometimes already 1-based (1,2).
@@ -186,6 +199,9 @@ function toMusicXmlStaffNumber(osmdStaffId: number): number {
   return osmdStaffId >= 1 ? osmdStaffId : osmdStaffId + 1;
 }
 
+/**
+ * Reads the MusicXML part id from an OSMD source note when available.
+ */
 function getPartIdFromSourceNote(sourceNote: unknown): string | undefined {
   const inst = (sourceNote as { ParentStaff?: { ParentInstrument?: { IdString?: string; idString?: string } } })?.ParentStaff
     ?.ParentInstrument;
@@ -193,6 +209,9 @@ function getPartIdFromSourceNote(sourceNote: unknown): string | undefined {
   return typeof id === 'string' && id.length > 0 ? id : undefined;
 }
 
+/**
+ * Reads the voice identifier from an OSMD source note when available.
+ */
 function getVoiceIdFromSourceNote(sourceNote: unknown): string | undefined {
   const v = (sourceNote as { ParentVoiceEntry?: { ParentVoice?: { VoiceId?: number | string; voiceId?: number | string } } })
     ?.ParentVoiceEntry?.ParentVoice;

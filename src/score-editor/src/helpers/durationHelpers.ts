@@ -1,6 +1,7 @@
 import type { NoteLocator } from '../models/musicXml';
-import type { MusicXmlDocument, MusicXmlMeasure, MusicXmlMeasureElement, MusicXmlNote } from '../models/musicXmlDocument';
-import { getIndexedPart } from './musicXmlHelper';
+import type { MusicXmlDocument, MusicXmlMeasure, MusicXmlNote } from '../models/musicXmlDocument';
+import type { MusicXmlVoiceEvent } from '../models/musicXmlVoiceEvents';
+import { extractVoiceEvents, getActiveDivisionsForMeasure, getIndexedPart } from './musicXmlHelper';
 
 type DurationValue = 'whole' | 'half' | 'quarter' | 'eighth' | '16th' | '32nd' | '64th';
 
@@ -34,6 +35,9 @@ const ORDERED_BASE_TYPES: Array<{ id: DurationValue; quarters: number }> = [
   { id: '64th', quarters: 1 / 16 },
 ];
 
+/**
+ * Converts a base duration id into MusicXML duration units for a given divisions value.
+ */
 function durationInDivisions(divisions: number, id: DurationValue): number {
   const q = Math.max(1, divisions);
   const raw =
@@ -53,6 +57,9 @@ function durationInDivisions(divisions: number, id: DurationValue): number {
   return Math.max(1, Math.round(raw));
 }
 
+/**
+ * Picks the nearest MusicXML <type> for a given duration value (in divisions).
+ */
 function bestBaseDurationId(divisions: number, durationValue: number): DurationValue {
   const q = durationValue / Math.max(1, divisions);
   let best = ORDERED_BASE_TYPES[2]!.id;
@@ -67,180 +74,51 @@ function bestBaseDurationId(divisions: number, durationValue: number): DurationV
   return best;
 }
 
-function getActiveDivisionsForMeasure(measures: MusicXmlMeasure[], measureIndex: number): number {
-  let divs = 1;
-  for (let mi = 0; mi <= measureIndex; mi++) {
-    const measure = measures[mi];
-    if (!measure) continue;
-    for (const e of measure.elements) {
-      if (e.kind !== 'attributes') continue;
-      const v = e.divisions;
-      if (typeof v === 'number' && Number.isFinite(v) && v > 0) divs = v;
-    }
-  }
-  return divs;
-}
-
+/**
+ * Updates the editable duration representation on a note.
+ */
 function setNoteDurationAndType(note: MusicXmlNote, durationValue: number, typeId: DurationValue, dotCount: 0 | 1 | 2) {
   note.duration = Math.max(1, Math.round(durationValue));
   note.type = TYPE_BY_ID[typeId];
   note.dots = dotCount;
 }
 
-type VoiceEvent = {
-  kind: 'chord' | 'note' | 'rest';
-  startTime: number;
-  duration: number;
-  root: MusicXmlNote;
-  chordNotes: MusicXmlNote[];
-  elementIndexes: number[];
-};
-
-function isNote(e: MusicXmlMeasureElement): e is MusicXmlNote {
-  return e.kind === 'note';
-}
-
-type ExtractResult = {
-  events: VoiceEvent[];
-  selectedEvent: VoiceEvent | null;
-  oldSelectedDuration: number;
-  measureTotal: number;
-  divisions: number;
-};
-
-function extractVoiceEvents(measure: MusicXmlMeasure, measures: MusicXmlMeasure[], locator: NoteLocator): ExtractResult {
-  const divisions = getActiveDivisionsForMeasure(measures, locator.measureIndex);
-  const elements = measure.elements;
-
-  const events: VoiceEvent[] = [];
-  let currentTime = 0;
-  let lastTargetNonChordStartTime: number | null = null;
-
-  for (let i = 0; i < elements.length; i++) {
-    const el = elements[i]!;
-    if (el.kind === 'backup') {
-      currentTime = Math.max(0, currentTime - Math.max(0, el.duration));
-      continue;
-    }
-    if (el.kind === 'forward') {
-      currentTime += Math.max(0, el.duration);
-      continue;
-    }
-    if (!isNote(el)) continue;
-
-    const matches =
-      el.staff === locator.staffNumber && (!locator.voice || !el.voice || el.voice === locator.voice);
-    if (!matches) {
-      if (!el.chord) currentTime += Math.max(0, el.duration);
-      continue;
-    }
-
-    const dur = Math.max(0, el.duration);
-    const isChord = el.chord;
-    const isRest = !el.pitch;
-
-    if (isRest) {
-      events.push({
-        kind: 'rest',
-        startTime: currentTime,
-        duration: dur,
-        root: el,
-        chordNotes: [],
-        elementIndexes: [i],
-      });
-      currentTime += dur;
-      continue;
-    }
-
-    if (isChord) {
-      const chordStartTime =
-        lastTargetNonChordStartTime !== null ? lastTargetNonChordStartTime : Math.max(0, currentTime - dur);
-      const last = events[events.length - 1];
-      if (last && last.kind === 'chord' && last.startTime === chordStartTime) {
-        last.chordNotes.push(el);
-        last.elementIndexes.push(i);
-      } else if (last && last.kind === 'note' && last.startTime === chordStartTime) {
-        last.kind = 'chord';
-        last.chordNotes = [last.root, el];
-        last.elementIndexes.push(i);
-      } else {
-        events.push({
-          kind: 'note',
-          startTime: chordStartTime,
-          duration: dur,
-          root: el,
-          chordNotes: [],
-          elementIndexes: [i],
-        });
-      }
-      continue;
-    }
-
-    events.push({
-      kind: 'note',
-      startTime: currentTime,
-      duration: dur,
-      root: el,
-      chordNotes: [],
-      elementIndexes: [i],
-    });
-    lastTargetNonChordStartTime = currentTime;
-    currentTime += dur;
-  }
-
-  const measureTotal = events.reduce((sum, e) => sum + e.duration, 0);
-
-  let selectedEvent: VoiceEvent | null = null;
-  let oldSelectedDuration = 0;
-
-  if (locator.target === 'rest' && typeof locator.eventIndex === 'number') {
-    const ev = events[locator.eventIndex] ?? null;
-    if (ev?.kind === 'rest') {
-      selectedEvent = ev;
-      oldSelectedDuration = ev.duration;
-    }
-  } else {
-    let pitchIndex = 0;
-    for (const ev of events) {
-      const candidates =
-        ev.kind === 'chord' ? (ev.chordNotes.length ? ev.chordNotes : [ev.root]) : [ev.root];
-      for (const n of candidates) {
-        if (!n.pitch) continue;
-        if (pitchIndex === locator.indexInMeasure) {
-          selectedEvent = ev;
-          oldSelectedDuration = ev.duration;
-          break;
-        }
-        pitchIndex++;
-      }
-      if (selectedEvent) break;
-    }
-  }
-
-  return { events, selectedEvent, oldSelectedDuration, measureTotal, divisions };
-}
-
-function deleteEventFromMeasure(measure: MusicXmlMeasure, ev: VoiceEvent) {
+/**
+ * Deletes all measure elements that belong to an extracted event (note/chord/rest).
+ */
+function deleteEventFromMeasure(measure: MusicXmlMeasure, ev: MusicXmlVoiceEvent) {
   const toRemove = new Set(ev.elementIndexes);
   measure.elements = measure.elements.filter((_, idx) => !toRemove.has(idx));
 }
 
-function setEventDuration(ev: VoiceEvent, durationValue: number, divisions: number) {
+/**
+ * Applies a new duration to an extracted event and synchronizes all chord notes.
+ */
+function setEventDuration(ev: MusicXmlVoiceEvent, durationValue: number, divisions: number) {
   const typeId = bestBaseDurationId(divisions, durationValue);
   const notes = ev.kind === 'chord' ? (ev.chordNotes.length ? ev.chordNotes : [ev.root]) : [ev.root];
   for (const n of notes) setNoteDurationAndType(n, durationValue, typeId, 0);
   ev.duration = durationValue;
 }
 
-function addTieToEvent(ev: VoiceEvent, tieType: 'start' | 'stop') {
+/**
+ * Ensures a tie marker exists on the event notes.
+ */
+function addTieToEvent(ev: MusicXmlVoiceEvent, tieType: 'start' | 'stop') {
   const notes = ev.kind === 'chord' ? (ev.chordNotes.length ? ev.chordNotes : [ev.root]) : [ev.root];
   for (const n of notes) if (!n.ties.includes(tieType)) n.ties.push(tieType);
 }
 
+/**
+ * Returns a multiplicative factor for dotted notes.
+ */
 function dotMultiplier(dotCount: 0 | 1 | 2): number {
   return dotCount === 1 ? 1.5 : dotCount === 2 ? 1.75 : 1;
 }
 
+/**
+ * Creates a rest note element sized to a duration gap.
+ */
 function createRestNote(durationValue: number, divisions: number, staff: number, voice?: string): MusicXmlNote {
   const typeId = bestBaseDurationId(divisions, durationValue);
   return {
@@ -256,6 +134,9 @@ function createRestNote(durationValue: number, divisions: number, staff: number,
   };
 }
 
+/**
+ * Reads the selected event duration type from the current document model.
+ */
 export function getDurationIdFromDoc(doc: MusicXmlDocument, locator: NoteLocator): DurationValue | null {
   const part = getIndexedPart(doc, locator.partId);
   const measure = part?.measures[locator.measureIndex];
@@ -273,6 +154,9 @@ export function getDurationIdFromDoc(doc: MusicXmlDocument, locator: NoteLocator
   return bestBaseDurationId(extracted.divisions, dur);
 }
 
+/**
+ * Reads the selected event dot count (0..2) from the current document model.
+ */
 export function getDotCountFromDoc(doc: MusicXmlDocument, locator: NoteLocator): 0 | 1 | 2 | null {
   const part = getIndexedPart(doc, locator.partId);
   const measure = part?.measures[locator.measureIndex];
@@ -282,6 +166,10 @@ export function getDotCountFromDoc(doc: MusicXmlDocument, locator: NoteLocator):
   return ev ? ev.root.dots : null;
 }
 
+/**
+ * Applies a duration change and reflows the voice by consuming/filling time with events/rests.
+ * When duration overflows measure end, creates continuations in following measures using ties.
+ */
 export function applyDurationWithReflow(
   current: MusicXmlDocument,
   locator: NoteLocator,
