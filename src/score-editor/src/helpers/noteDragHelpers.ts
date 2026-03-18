@@ -120,9 +120,17 @@ export type NoteDragState = {
   startClientY: number;
   lastClientY: number;
   staffStepPx: number;
+  staffStepSvg: number;
+  color: string;
   note: GraphicNote;
   locator: NoteLocator;
   noteheadEls: Element[];
+  // Ledger line preview state (created on pointer down, updated on move)
+  staffTopY: number;
+  staffBottomY: number;
+  noteCenterX: number;
+  noteCenterYSvg: number;
+  ledgerGroup: SVGGElement | null;
 };
 
 function clearDragPreview(els: Element[]) {
@@ -142,6 +150,86 @@ function applyDragPreview(els: Element[], yPx: number) {
     html.style.willChange = 'transform';
     html.style.transformOrigin = 'center';
     html.style.transform = `translateY(${px}px)`;
+  }
+}
+
+function getClosestSvg(el: Element | null): SVGSVGElement | null {
+  let cur: Element | null = el;
+  while (cur) {
+    if (cur instanceof SVGSVGElement) return cur;
+    cur = cur.parentElement;
+  }
+  return null;
+}
+
+function guessStaffBounds(svg: SVGSVGElement, noteCenterX: number, nearY: number): { top: number; bottom: number } | null {
+  const candidates: Array<{ y: number; top: number; bottom: number }> = [];
+  const els = svg.querySelectorAll('path, line');
+  for (const el of els) {
+    const r = (el as SVGGraphicsElement).getBBox?.();
+    if (!r) continue;
+    // Staff lines are long and very thin.
+    if (r.width < 80) continue;
+    if (r.height > 3) continue;
+    if (noteCenterX < r.x - 5 || noteCenterX > r.x + r.width + 5) continue;
+    const cy = r.y + r.height / 2;
+    // Prefer lines not too far from the clicked note.
+    if (Math.abs(cy - nearY) > 300) continue;
+    candidates.push({ y: cy, top: r.y, bottom: r.y + r.height });
+  }
+  if (candidates.length < 5) return null;
+  candidates.sort((a, b) => Math.abs(a.y - nearY) - Math.abs(b.y - nearY));
+  const nearest5 = candidates.slice(0, 5);
+  const top = Math.min(...nearest5.map((c) => c.y));
+  const bottom = Math.max(...nearest5.map((c) => c.y));
+  if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom <= top) return null;
+  return { top, bottom };
+}
+
+function estimateStaffStepSvgFromNotehead(notehead: Element | null): number {
+  const g = notehead as unknown as SVGGraphicsElement | null;
+  const r = g?.getBBox?.();
+  const est = r ? r.height / 2 : 3;
+  return Math.max(0.5, Math.min(50, est));
+}
+
+function ensureLedgerGroup(svg: SVGSVGElement): SVGGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const g = document.createElementNS(ns, 'g');
+  g.setAttribute('data-hf-ledgers', '1');
+  svg.appendChild(g);
+  return g;
+}
+
+function clearLedgerLines(group: SVGGElement | null) {
+  if (!group) return;
+  while (group.firstChild) group.removeChild(group.firstChild);
+}
+
+function removeLedgerGroup(group: SVGGElement | null) {
+  if (!group) return;
+  group.parentNode?.removeChild(group);
+}
+
+function drawLedgerLines(
+  group: SVGGElement,
+  noteCenterX: number,
+  halfWidth: number,
+  ys: number[],
+  stroke: string
+) {
+  const ns = 'http://www.w3.org/2000/svg';
+  clearLedgerLines(group);
+  for (const y of ys) {
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', String(noteCenterX - halfWidth));
+    line.setAttribute('x2', String(noteCenterX + halfWidth));
+    line.setAttribute('y1', String(y));
+    line.setAttribute('y2', String(y));
+    line.setAttribute('stroke', stroke);
+    line.setAttribute('stroke-width', '1');
+    line.setAttribute('stroke-linecap', 'round');
+    group.appendChild(line);
   }
 }
 
@@ -175,10 +263,25 @@ export function noteDragPointerDown(args: NoteDragStartArgs): NoteDragState | nu
 
   clearNoteHighlight(args.prevSelectedNote);
   clickedNote.sourceNote.noteheadColor = '#c00';
+  const color = clickedNote.sourceNote.noteheadColor ?? '#c00';
   args.onSelect(clickedNote);
 
-  const noteheadEls = (clickedNote.getNoteheadSVGs?.() ?? []).filter(Boolean) as Element[];
   const staffStepPx = estimateStaffStepPx(clickedNote);
+  const noteheadEls = (clickedNote.getNoteheadSVGs?.() ?? []).filter(Boolean) as Element[];
+  const firstHead = noteheadEls[0] ?? null;
+  const headBox = (firstHead as unknown as SVGGraphicsElement | null)?.getBBox?.() ?? null;
+  const noteCenterX = headBox ? headBox.x + headBox.width / 2 : 0;
+  const noteCenterYSvg = headBox ? headBox.y + headBox.height / 2 : 0;
+  const staffStepSvg = estimateStaffStepSvgFromNotehead(firstHead);
+
+  // Find staff bounds in the same SVG so we can draw ledgers above/below the 5 lines.
+  const svg = getClosestSvg(firstHead);
+  // Fallback nearY for staff search: use the note's svg-center if available, else 0.
+  const nearYForSearch = noteCenterYSvg || 0;
+  const bounds = svg ? guessStaffBounds(svg, noteCenterX, nearYForSearch) : null;
+  const staffTopY = bounds?.top ?? (noteCenterYSvg - 4 * staffStepSvg);
+  const staffBottomY = bounds?.bottom ?? (noteCenterYSvg + 4 * staffStepSvg);
+  const ledgerGroup = svg ? ensureLedgerGroup(svg) : null;
 
   return {
     active: true,
@@ -187,13 +290,23 @@ export function noteDragPointerDown(args: NoteDragStartArgs): NoteDragState | nu
     startClientY: args.clientY,
     lastClientY: args.clientY,
     staffStepPx,
+    staffStepSvg,
+    color,
     note: clickedNote,
     locator,
     noteheadEls,
+    staffTopY,
+    staffBottomY,
+    noteCenterX,
+    noteCenterYSvg,
+    ledgerGroup,
   };
 }
 
-export function noteDragPointerMove(drag: NoteDragState, clientY: number): void {
+export function noteDragPointerMove(
+  drag: NoteDragState,
+  clientY: number
+): void {
   if (!drag.active) return;
   const dy = clientY - drag.startClientY;
   drag.lastClientY = clientY;
@@ -202,11 +315,39 @@ export function noteDragPointerMove(drag: NoteDragState, clientY: number): void 
   const diatonicSteps = diatonicStepsFromDragDelta(dy, drag.staffStepPx);
   const snappedDy = -diatonicSteps * drag.staffStepPx;
   applyDragPreview(drag.noteheadEls, snappedDy);
+
+  // Ledger lines: every 2 steps beyond staff top/bottom lines.
+  const projectedCenterYSvg = drag.noteCenterYSvg + (-diatonicSteps * drag.staffStepSvg);
+  const beyondTopSteps = Math.max(0, Math.ceil((drag.staffTopY - projectedCenterYSvg) / drag.staffStepSvg));
+  const beyondBottomSteps = Math.max(0, Math.ceil((projectedCenterYSvg - drag.staffBottomY) / drag.staffStepSvg));
+
+  const ys: number[] = [];
+  const step2 = drag.staffStepSvg * 2;
+  if (beyondTopSteps >= 2) {
+    const lines = Math.floor(beyondTopSteps / 2);
+    for (let i = 1; i <= lines; i++) ys.push(drag.staffTopY - i * step2);
+  } else if (beyondBottomSteps >= 2) {
+    const lines = Math.floor(beyondBottomSteps / 2);
+    for (let i = 1; i <= lines; i++) ys.push(drag.staffBottomY + i * step2);
+  }
+
+  if (drag.ledgerGroup) {
+    // Size ledger a bit wider than notehead.
+    const headBox = (drag.noteheadEls[0] as unknown as SVGGraphicsElement | null)?.getBBox?.() ?? null;
+    // Keep ledgers short: roughly notehead width (not spanning the staff).
+    const halfWidth = headBox ? Math.max(5, headBox.width * 0.7) : 10;
+    drawLedgerLines(drag.ledgerGroup, drag.noteCenterX, halfWidth, ys, drag.color);
+  }
 }
 
-export function noteDragPointerCancel(drag: NoteDragState): void {
+export function noteDragPointerCancel(
+  drag: NoteDragState,
+): void {
   drag.active = false;
   clearDragPreview(drag.noteheadEls);
+  clearLedgerLines(drag.ledgerGroup);
+  removeLedgerGroup(drag.ledgerGroup);
+  drag.ledgerGroup = null;
 }
 
 export function noteDragPointerUp(
@@ -217,6 +358,9 @@ export function noteDragPointerUp(
 ): void {
   drag.active = false;
   clearDragPreview(drag.noteheadEls);
+  clearLedgerLines(drag.ledgerGroup);
+  removeLedgerGroup(drag.ledgerGroup);
+  drag.ledgerGroup = null;
 
   if (!currentDoc) return;
   if (!drag.moved) return;
