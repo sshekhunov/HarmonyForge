@@ -1,6 +1,7 @@
 import { AccidentalTools } from './Tools/AccidentalTools';
 import { DurationTools } from './Tools/DurationTools';
 import { FileTools } from './Tools/FileTools';
+import { HistoryTools } from './Tools/HistoryTools';
 
 type Props = {
   musicXmlFile: string | null;
@@ -14,6 +15,8 @@ export function TopPanel({
   return (
     <div className="score-editor__panel">
       <FileTools musicXmlFile={musicXmlFile} setMusicXmlFile={setMusicXmlFile} />
+      <span className="score-editor__separator" aria-hidden />
+      <HistoryTools musicXmlFile={musicXmlFile} setMusicXmlFile={setMusicXmlFile} />
       <span className="score-editor__separator" aria-hidden />
       <DurationTools musicXmlFile={musicXmlFile} setMusicXmlFile={setMusicXmlFile} />
       <span className="score-editor__separator" aria-hidden />

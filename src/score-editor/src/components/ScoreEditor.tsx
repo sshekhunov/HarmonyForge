@@ -12,6 +12,7 @@ import {
   selectionStoreSetMeasureList,
   selectionStoreSetSelectedNote,
 } from '../helpers/selectionStore';
+import { historyClearApplying, historyIsApplying, historyRecord, historyReset } from '../services/historyService';
 import { TopPanel } from './TopPanel';
 import './ScoreEditor.css';
 
@@ -178,6 +179,12 @@ export function ScoreEditor() {
           } else {
             pendingScrollRef.current = null;
           }
+          if (!musicXmlFile) {
+            historyReset();
+          } else if (!historyIsApplying()) {
+            historyRecord(musicXmlFile, xml);
+          }
+          historyClearApplying();
           setMusicXmlFile(xml);
         }}
       />
