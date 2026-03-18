@@ -158,6 +158,25 @@ export function ScoreEditor() {
     setZoom(next);
   }, []);
 
+  const applyDocChange = useCallback((nextDoc: MusicXmlDocument | null) => {
+    const prevDoc = musicDoc;
+    if (prevDoc && containerRef.current) {
+      pendingScrollRef.current = {
+        top: containerRef.current.scrollTop,
+        left: containerRef.current.scrollLeft,
+      };
+    } else {
+      pendingScrollRef.current = null;
+    }
+    if (!prevDoc) {
+      historyReset();
+    } else if (!historyIsApplying() && nextDoc) {
+      historyRecord(musicXmlToString(prevDoc), musicXmlToString(nextDoc));
+    }
+    historyClearApplying();
+    setMusicDoc(nextDoc);
+  }, [musicDoc]);
+
   const handleOsmdClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       // If pointer-dragging moved the note, suppress the click selection toggle.
@@ -246,12 +265,12 @@ export function ScoreEditor() {
       if (!drag?.active) return;
       if (e.pointerId !== drag.pointerId) return;
 
-      noteDragPointerUp(drag, musicDoc, selectionStoreSetPendingLocator, (doc) => setMusicDoc(doc));
+      noteDragPointerUp(drag, musicDoc, selectionStoreSetPendingLocator, (doc) => applyDocChange(doc));
       dragRef.current = null;
       e.preventDefault();
       e.stopPropagation();
     },
-    [musicDoc]
+    [applyDocChange, musicDoc]
   );
 
   const handlePointerCancel = useCallback(
@@ -271,24 +290,7 @@ export function ScoreEditor() {
         musicDoc={musicDoc}
         zoom={zoom}
         setZoom={handleSetZoom}
-        setMusicDoc={(nextDoc) => {
-          const prevDoc = musicDoc;
-          if (prevDoc && containerRef.current) {
-            pendingScrollRef.current = {
-              top: containerRef.current.scrollTop,
-              left: containerRef.current.scrollLeft,
-            };
-          } else {
-            pendingScrollRef.current = null;
-          }
-          if (!prevDoc) {
-            historyReset();
-          } else if (!historyIsApplying() && nextDoc) {
-            historyRecord(musicXmlToString(prevDoc), musicXmlToString(nextDoc));
-          }
-          historyClearApplying();
-          setMusicDoc(nextDoc);
-        }}
+        setMusicDoc={applyDocChange}
       />
       <div className="score-editor__viewport">
         {error && <div className="score-editor__error" role="alert">{error}</div>}

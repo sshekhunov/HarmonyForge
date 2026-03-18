@@ -33,6 +33,7 @@ export function estimateStaffStepPx(note: GraphicNote | null): number {
  */
 export function diatonicStepsFromDragDelta(deltaYPx: number, staffStepPx: number): number {
   const step = staffStepPx > 0 ? staffStepPx : 6;
+  const raw = -deltaYPx / step;
   return clampInt(raw, -48, 48);
 }
 
@@ -202,12 +203,25 @@ function estimateStaffStepSvgFromNotehead(notehead: Element | null): number {
 }
 
 function clientToSvg(svgEl: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } | null {
-  const ctm = svgEl.getScreenCTM?.();
-  if (!ctm) return null;
-  const inv = ctm.inverse();
-  const p = new DOMPoint(clientX, clientY).matrixTransform(inv);
-  if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
-  return { x: p.x, y: p.y };
+  try {
+    const ctm = svgEl.getScreenCTM?.();
+    if (!ctm) return null;
+    const inv = ctm.inverse();
+    if (typeof (globalThis as any).DOMPoint === 'function') {
+      const p = new (globalThis as any).DOMPoint(clientX, clientY).matrixTransform(inv);
+      if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+      return { x: p.x, y: p.y };
+    }
+    const pt = svgEl.createSVGPoint?.();
+    if (!pt) return null;
+    pt.x = clientX;
+    pt.y = clientY;
+    const p2 = pt.matrixTransform(inv);
+    if (!Number.isFinite(p2.x) || !Number.isFinite(p2.y)) return null;
+    return { x: p2.x, y: p2.y };
+  } catch {
+    return null;
+  }
 }
 
 function estimateSvgUnitsPerPx(svgEl: SVGSVGElement): number {
