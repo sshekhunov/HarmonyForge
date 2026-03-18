@@ -131,6 +131,7 @@ export type NoteDragState = {
   noteCenterX: number;
   noteCenterYSvg: number;
   ledgerGroup: SVGGElement | null;
+  svgUnitsPerPx: number;
 };
 
 function clearDragPreview(els: Element[]) {
@@ -150,6 +151,20 @@ function applyDragPreview(els: Element[], yPx: number) {
     html.style.willChange = 'transform';
     html.style.transformOrigin = 'center';
     html.style.transform = `translateY(${px}px)`;
+  }
+}
+
+function applySelectedColorPreview(els: Element[], color: string) {
+  for (const el of els) {
+    const root = el as unknown as Element;
+    const paint = (node: Element) => {
+      const s = (node as any).style as CSSStyleDeclaration | undefined;
+      if (!s) return;
+      (s as any).fill = color;
+      (s as any).stroke = color;
+    };
+    paint(root);
+    for (const n of Array.from(root.querySelectorAll?.('path, ellipse, circle, rect') ?? [])) paint(n);
   }
 }
 
@@ -191,6 +206,25 @@ function estimateStaffStepSvgFromNotehead(notehead: Element | null): number {
   const r = g?.getBBox?.();
   const est = r ? r.height / 2 : 3;
   return Math.max(0.5, Math.min(50, est));
+}
+
+function clientToSvg(svgEl: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } | null {
+  const ctm = svgEl.getScreenCTM?.();
+  if (!ctm) return null;
+  const inv = ctm.inverse();
+  const p = new DOMPoint(clientX, clientY).matrixTransform(inv);
+  if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+  return { x: p.x, y: p.y };
+}
+
+function estimateSvgUnitsPerPx(svgEl: SVGSVGElement): number {
+  const ctm = svgEl.getScreenCTM?.();
+  if (!ctm) return 1;
+  // screenCTM maps svg->screen. Inverse maps screen->svg.
+  const inv = ctm.inverse();
+  // For mostly-uniform scaling, inv.d is svgUnits per 1px in Y.
+  const v = inv.d;
+  return Number.isFinite(v) && v !== 0 ? v : 1;
 }
 
 function ensureLedgerGroup(svg: SVGSVGElement): SVGGElement {
@@ -269,18 +303,26 @@ export function noteDragPointerDown(args: NoteDragStartArgs): NoteDragState | nu
   const staffStepPx = estimateStaffStepPx(clickedNote);
   const noteheadEls = (clickedNote.getNoteheadSVGs?.() ?? []).filter(Boolean) as Element[];
   const firstHead = noteheadEls[0] ?? null;
+  const svg = getClosestSvg(firstHead);
+  const svgUnitsPerPx = svg ? estimateSvgUnitsPerPx(svg) : 1;
+  const svgPt = svg ? clientToSvg(svg, args.clientX, args.clientY) : null;
+
+  applySelectedColorPreview(noteheadEls, color);
+
+  // Prefer stable client->svg coordinate mapping (works under zoom).
   const headBox = (firstHead as unknown as SVGGraphicsElement | null)?.getBBox?.() ?? null;
-  const noteCenterX = headBox ? headBox.x + headBox.width / 2 : 0;
-  const noteCenterYSvg = headBox ? headBox.y + headBox.height / 2 : 0;
-  const staffStepSvg = estimateStaffStepSvgFromNotehead(firstHead);
+  const noteCenterX = svgPt?.x ?? (headBox ? headBox.x + headBox.width / 2 : 0);
+  const noteCenterYSvg = svgPt?.y ?? (headBox ? headBox.y + headBox.height / 2 : 0);
 
   // Find staff bounds in the same SVG so we can draw ledgers above/below the 5 lines.
-  const svg = getClosestSvg(firstHead);
-  // Fallback nearY for staff search: use the note's svg-center if available, else 0.
-  const nearYForSearch = noteCenterYSvg || 0;
-  const bounds = svg ? guessStaffBounds(svg, noteCenterX, nearYForSearch) : null;
-  const staffTopY = bounds?.top ?? (noteCenterYSvg - 4 * staffStepSvg);
-  const staffBottomY = bounds?.bottom ?? (noteCenterYSvg + 4 * staffStepSvg);
+  const bounds = svg ? guessStaffBounds(svg, noteCenterX, noteCenterYSvg) : null;
+  const staffTopY = bounds?.top ?? (noteCenterYSvg - 4 * estimateStaffStepSvgFromNotehead(firstHead));
+  const staffBottomY = bounds?.bottom ?? (noteCenterYSvg + 4 * estimateStaffStepSvgFromNotehead(firstHead));
+  // Staff has 5 lines => 4 line-to-line gaps. Diatonic step is half a gap.
+  const staffStepSvg =
+    bounds
+      ? Math.max(0.5, Math.min(50, ((staffBottomY - staffTopY) / 4) / 2))
+      : estimateStaffStepSvgFromNotehead(firstHead);
   const ledgerGroup = svg ? ensureLedgerGroup(svg) : null;
 
   return {
@@ -300,12 +342,14 @@ export function noteDragPointerDown(args: NoteDragStartArgs): NoteDragState | nu
     noteCenterX,
     noteCenterYSvg,
     ledgerGroup,
+    svgUnitsPerPx,
   };
 }
 
 export function noteDragPointerMove(
   drag: NoteDragState,
-  clientY: number
+  clientY: number,
+  zoom: number
 ): void {
   if (!drag.active) return;
   const dy = clientY - drag.startClientY;
@@ -313,11 +357,17 @@ export function noteDragPointerMove(
   if (Math.abs(dy) >= 3) drag.moved = true;
 
   const diatonicSteps = diatonicStepsFromDragDelta(dy, drag.staffStepPx);
-  const snappedDy = -diatonicSteps * drag.staffStepPx;
-  applyDragPreview(drag.noteheadEls, snappedDy);
+  // OSMD zoom is applied via a CSS scale. translateY is also scaled, so we must
+  // counter-scale the preview translation to match cursor movement in screen px.
+  const z = typeof zoom === 'number' && Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  const snappedDyScreenPx = -diatonicSteps * drag.staffStepPx;
+  const snappedDyLocalPx = snappedDyScreenPx / z;
+  applyDragPreview(drag.noteheadEls, snappedDyLocalPx);
 
   // Ledger lines: every 2 steps beyond staff top/bottom lines.
-  const projectedCenterYSvg = drag.noteCenterYSvg + (-diatonicSteps * drag.staffStepSvg);
+  // Convert the snapped pixel translation into SVG units (accounts for zoom).
+  const snappedDySvg = snappedDyScreenPx * (drag.svgUnitsPerPx || 1);
+  const projectedCenterYSvg = drag.noteCenterYSvg + snappedDySvg;
   const beyondTopSteps = Math.max(0, Math.ceil((drag.staffTopY - projectedCenterYSvg) / drag.staffStepSvg));
   const beyondBottomSteps = Math.max(0, Math.ceil((projectedCenterYSvg - drag.staffBottomY) / drag.staffStepSvg));
 

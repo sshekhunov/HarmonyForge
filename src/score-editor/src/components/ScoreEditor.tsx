@@ -233,11 +233,11 @@ export function ScoreEditor() {
       if (!drag?.active) return;
       if (e.pointerId !== drag.pointerId) return;
 
-      noteDragPointerMove(drag, e.clientY);
+      noteDragPointerMove(drag, e.clientY, zoom);
       e.preventDefault();
       e.stopPropagation();
     },
-    []
+    [zoom]
   );
 
   const handlePointerUp = useCallback(
