@@ -52,6 +52,7 @@ export function ScoreEditor() {
   const osmdRef = useRef<IOSMDInstance | null>(null);
   const selectedNoteRef = useRef<GraphicNote | null>(null);
   const [musicXmlFile, setMusicXmlFile] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
   const pendingScrollRef = useRef<{ top: number; left: number } | null>(null);
 
@@ -133,6 +134,24 @@ export function ScoreEditor() {
     if (musicXmlFile) void loadXmlIntoOsmd(musicXmlFile);
   }, [musicXmlFile, loadXmlIntoOsmd]);
 
+  useEffect(() => {
+    const osmd = osmdRef.current;
+    const scroller = containerRef.current;
+    if (!osmd || !scroller) return;
+    const scrollBefore = { top: scroller.scrollTop, left: scroller.scrollLeft };
+    // Rerender after zoom change so layout recalculates.
+    requestAnimationFrame(() => {
+      osmd.render();
+      restoreScrollBurst(scroller, scrollBefore);
+    });
+  }, [zoom, restoreScrollBurst]);
+
+  const handleSetZoom = useCallback((next: number) => {
+    const scroller = containerRef.current;
+    if (scroller) pendingScrollRef.current = { top: scroller.scrollTop, left: scroller.scrollLeft };
+    setZoom(next);
+  }, []);
+
   const handleOsmdClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const osmd = osmdRef.current as IOsmdWithGraphic | null;
@@ -170,6 +189,8 @@ export function ScoreEditor() {
     <div className="score-editor">
       <TopPanel
         musicXmlFile={musicXmlFile}
+        zoom={zoom}
+        setZoom={handleSetZoom}
         setMusicXmlFile={(xml) => {          
           if (musicXmlFile && containerRef.current) {
             pendingScrollRef.current = {
@@ -193,6 +214,7 @@ export function ScoreEditor() {
         <div
           ref={containerRef}
           className="score-editor__osmd"
+          style={{ ['--osmd-zoom' as any]: zoom } as React.CSSProperties}
           onClick={handleOsmdClick}
           role="application"
           aria-label="Score: click a note to select it"

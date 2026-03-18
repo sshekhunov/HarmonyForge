@@ -47,7 +47,7 @@ export function HistoryTools({ musicXmlFile, setMusicXmlFile }: Props) {
   };
 
   return (
-    <span role="group" aria-label="History">
+    <span className="score-editor__history" role="group" aria-label="History">
       <button
         type="button"
         className="score-editor__btn score-editor__btn--icon-only"
