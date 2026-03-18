@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useSelectionSnapshot } from '../../helpers/selectionStore';
 import { selectionStoreSetPendingLocator } from '../../helpers/selectionStore';
-import { applyDurationWithReflow, getDotCountFromXml, getDurationIdFromXml } from '../../helpers/durationHelpers';
+import { applyDurationWithReflow, getDotCountFromDoc, getDurationIdFromDoc } from '../../helpers/durationHelpers';
+import type { MusicXmlDocument } from '../../models/musicXmlDocument';
 
 type DurationValue = 'whole' | 'half' | 'quarter' | 'eighth' | '16th' | '32nd' | '64th';
 
@@ -66,11 +67,11 @@ function durationIdFromSelectedNote(selectedNote: unknown): DurationValue | null
 }
 
 type Props = {
-  musicXmlFile: string | null;
-  setMusicXmlFile: (xml: string) => void;
+  musicDoc: MusicXmlDocument | null;
+  setMusicDoc: (doc: MusicXmlDocument | null) => void;
 };
 
-export function DurationTools({ musicXmlFile, setMusicXmlFile }: Props) {
+export function DurationTools({ musicDoc, setMusicDoc }: Props) {
   const { hasSelection, locator, selectedNote } = useSelectionSnapshot() as {
     hasSelection?: boolean;
     locator?: unknown;
@@ -80,9 +81,9 @@ export function DurationTools({ musicXmlFile, setMusicXmlFile }: Props) {
   const [manualDot, setManualDot] = useState<DotValue>(0);
   const byId = useMemo(() => new Map(DURATIONS.map((d) => [d.id, d])), []);
   const selectedFromXml =
-    musicXmlFile && locator ? (getDurationIdFromXml(musicXmlFile, locator as any) as DurationValue | null) : null;
+    musicDoc && locator ? (getDurationIdFromDoc(musicDoc, locator as any) as DurationValue | null) : null;
   const dotFromXml =
-    musicXmlFile && locator ? (getDotCountFromXml(musicXmlFile, locator as any) as DotValue | null) : null;
+    musicDoc && locator ? (getDotCountFromDoc(musicDoc, locator as any) as DotValue | null) : null;
   const selectedFromNote = durationIdFromSelectedNote(selectedNote);
   const selected = selectedFromXml ?? selectedFromNote ?? manualSelected;
   const dot = dotFromXml ?? manualDot;
@@ -100,12 +101,12 @@ export function DurationTools({ musicXmlFile, setMusicXmlFile }: Props) {
               className={`score-editor__btn score-editor__btn--symbol score-editor__btn--toggle${isSelected ? ' is-active' : ''}`}
               onClick={() => {
                 setManualSelected(def.id);
-                if (!musicXmlFile) return;
+                if (!musicDoc) return;
                 if (!locator) return;
-                const newXml = applyDurationWithReflow(musicXmlFile, locator as any, def.id, dot);
-                if (!newXml) return;
+                const next = applyDurationWithReflow(musicDoc, locator as any, def.id, dot);
+                if (!next) return;
                 selectionStoreSetPendingLocator(locator as any);
-                setMusicXmlFile(newXml);
+                setMusicDoc(next);
               }}
               aria-pressed={isSelected}
               disabled={!hasSelection}
@@ -128,12 +129,12 @@ export function DurationTools({ musicXmlFile, setMusicXmlFile }: Props) {
               className={`score-editor__btn score-editor__btn--symbol score-editor__btn--toggle${isSelected ? ' is-active' : ''}`}
               onClick={() => {
                 setManualDot(d.id);
-                if (!musicXmlFile) return;
+                if (!musicDoc) return;
                 if (!locator) return;
-                const newXml = applyDurationWithReflow(musicXmlFile, locator as any, selected, d.id);
-                if (!newXml) return;
+                const next = applyDurationWithReflow(musicDoc, locator as any, selected, d.id);
+                if (!next) return;
                 selectionStoreSetPendingLocator(locator as any);
-                setMusicXmlFile(newXml);
+                setMusicDoc(next);
               }}
               aria-pressed={isSelected}
               disabled={!hasSelection}

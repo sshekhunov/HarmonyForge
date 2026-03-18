@@ -1,189 +1,87 @@
-/**
- * MusicXML accidental helpers.
- * Uses document namespace when present for proper MusicXML handling.
- */
-
 import type { NoteLocator } from '../models/musicXml';
+import type { MusicXmlDocument } from '../models/musicXmlDocument';
+import type { MusicXmlMeasureElement, MusicXmlNote } from '../models/musicXmlDocument';
+import { getIndexedPart } from './musicXmlHelper';
 
-/**
- * Applies an accidental using a robust locator:
- * part (optional) + measure index + staff + (optional) voice + index-in-measure.
- */
-export function applyAccidental(
-  xml: string,
-  locator: NoteLocator,
-  alter: number,
-  accidentalName: string
-): string | null {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(xml, 'application/xml');
-  const ns = doc.documentElement.namespaceURI ?? null;
-  const getByTag = (parent: Element, tag: string) =>
-    ns ? parent.getElementsByTagNameNS(ns, tag) : parent.getElementsByTagName(tag);
-  const createEl = (tag: string) => (ns ? doc.createElementNS(ns, tag) : doc.createElement(tag));
+function matchesStaffVoice(note: { staff: number; voice?: string }, locator: NoteLocator): boolean {
+  if (note.staff !== locator.staffNumber) return false;
+  if (locator.voice && note.voice && note.voice !== locator.voice) return false;
+  return true;
+}
 
-  const parts = ns ? doc.getElementsByTagNameNS(ns, 'part') : doc.getElementsByTagName('part');
-  let partEl: Element | null = null;
-  if (locator.partId) {
-    for (let i = 0; i < parts.length; i++) {
-      const p = parts[i];
-      if (p?.getAttribute('id') === locator.partId) {
-        partEl = p;
-        break;
-      }
+function getActiveKeyFifths(doc: MusicXmlDocument, partId: string | undefined, measureIndex: number): number {
+  const part = getIndexedPart(doc, partId);
+  if (!part) return 0;
+  let fifths = 0;
+  for (let mi = 0; mi <= measureIndex; mi++) {
+    const measure = part.measures[mi];
+    if (!measure) continue;
+    for (const e of measure.elements) {
+      if (e.kind !== 'attributes') continue;
+      if (typeof e.keyFifths === 'number' && Number.isFinite(e.keyFifths)) fifths = e.keyFifths;
     }
   }
-  partEl = partEl ?? (parts.length > 0 ? (parts[0] ?? null) : null);
-  if (!partEl) return null;
+  return fifths;
+}
 
-  const measures = getByTag(partEl, 'measure');
-  const measureEl = measures[locator.measureIndex] ?? null;
-  if (!measureEl) return null;
+function keyAlterForStep(step: string, fifths: number): number {
+  const sharps = ['F', 'C', 'G', 'D', 'A', 'E', 'B'] as const;
+  const flats = ['B', 'E', 'A', 'D', 'G', 'C', 'F'] as const;
+  const up = step.toUpperCase();
+  if (fifths > 0) return sharps.slice(0, Math.min(7, fifths)).includes(up as any) ? 1 : 0;
+  if (fifths < 0) return flats.slice(0, Math.min(7, -fifths)).includes(up as any) ? -1 : 0;
+  return 0;
+}
 
-  const notes = getByTag(measureEl, 'note');
+function locatePitchNoteInMeasure(elements: MusicXmlMeasureElement[], locator: NoteLocator): MusicXmlNote | null {
   let pitchIndex = 0;
-  for (let i = 0; i < notes.length; i++) {
-    const note = notes[i];
-    if (!note || getByTag(note, 'pitch').length === 0) continue;
-
-    const staffEl = getByTag(note, 'staff')[0];
-    const noteStaffNumber = staffEl ? Number(staffEl.textContent ?? '') : 1;
-    if (Number.isFinite(noteStaffNumber) && noteStaffNumber !== locator.staffNumber) continue;
-    if (!Number.isFinite(noteStaffNumber) && locator.staffNumber !== 1) continue;
-
-    if (locator.voice) {
-      const voiceEl = getByTag(note, 'voice')[0];
-      const v = voiceEl?.textContent?.trim();
-      if (v !== locator.voice) continue;
-    }
-
-    if (pitchIndex === locator.indexInMeasure) {
-      const pitch = getByTag(note, 'pitch')[0];
-      if (!pitch) break;
-
-      let alterEl = getByTag(pitch, 'alter')[0];
-      if (!alterEl) {
-        alterEl = createEl('alter');
-        pitch.appendChild(alterEl);
-      }
-      alterEl.textContent = String(alter);
-
-      const accTags = getByTag(note, 'accidental');
-      let accEl = accTags[0];
-      if (accidentalName) {
-        if (!accEl) {
-          accEl = createEl('accidental');
-          note.insertBefore(accEl, note.firstChild);
-        }
-        accEl.textContent = accidentalName;
-      } else if (accEl) {
-        accEl.remove();
-      }
-      return new XMLSerializer().serializeToString(doc);
-    }
-
+  for (const e of elements) {
+    if (e.kind !== 'note') continue;
+    if (!matchesStaffVoice(e, locator)) continue;
+    if (!e.pitch) continue;
+    if (pitchIndex === locator.indexInMeasure) return e;
     pitchIndex++;
   }
-
   return null;
 }
 
-export function clearAccidental(xml: string, locator: NoteLocator): string | null {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(xml, 'application/xml');
-  const ns = doc.documentElement.namespaceURI ?? null;
-  const getByTag = (parent: Element, tag: string) =>
-    ns ? parent.getElementsByTagNameNS(ns, tag) : parent.getElementsByTagName(tag);
-  const createEl = (tag: string) => (ns ? doc.createElementNS(ns, tag) : doc.createElement(tag));
+/**
+ * Applies an explicit accidental to the selected pitch note.
+ */
+export function applyAccidental(
+  current: MusicXmlDocument,
+  locator: NoteLocator,
+  alter: number,
+  accidentalName: string
+): MusicXmlDocument | null {
+  const doc = structuredClone(current);
+  const part = getIndexedPart(doc, locator.partId);
+  const measure = part?.measures[locator.measureIndex];
+  if (!part || !measure) return null;
 
-  const parts = ns ? doc.getElementsByTagNameNS(ns, 'part') : doc.getElementsByTagName('part');
-  let partEl: Element | null = null;
-  if (locator.partId) {
-    for (let i = 0; i < parts.length; i++) {
-      const p = parts[i];
-      if (p?.getAttribute('id') === locator.partId) {
-        partEl = p;
-        break;
-      }
-    }
-  }
-  partEl = partEl ?? (parts.length > 0 ? (parts[0] ?? null) : null);
-  if (!partEl) return null;
+  const note = locatePitchNoteInMeasure(measure.elements, locator);
+  if (!note || !note.pitch) return null;
+  note.pitch.alter = alter;
+  note.accidental = accidentalName;
+  return doc;
+}
 
-  const measures = getByTag(partEl, 'measure');
-  const measureEl = measures[locator.measureIndex] ?? null;
-  if (!measureEl) return null;
+/**
+ * Clears the explicit accidental and restores the pitch alteration implied by the key signature.
+ */
+export function clearAccidental(current: MusicXmlDocument, locator: NoteLocator): MusicXmlDocument | null {
+  const doc = structuredClone(current);
+  const part = getIndexedPart(doc, locator.partId);
+  const measure = part?.measures[locator.measureIndex];
+  if (!part || !measure) return null;
 
-  const getActiveKeyFifths = (): number => {
-    let fifths = 0;
-    for (let mi = 0; mi <= locator.measureIndex; mi++) {
-      const m = measures[mi];
-      if (!m) continue;
-      const attrs = getByTag(m, 'attributes')[0];
-      if (!attrs) continue;
-      const key = getByTag(attrs, 'key')[0];
-      if (!key) continue;
-      const fifthsEl = getByTag(key, 'fifths')[0];
-      if (!fifthsEl) continue;
-      const v = Number(fifthsEl.textContent ?? '');
-      if (Number.isFinite(v)) fifths = v;
-    }
-    return fifths;
-  };
+  const note = locatePitchNoteInMeasure(measure.elements, locator);
+  if (!note || !note.pitch) return null;
 
-  const keyAlterForStep = (step: string, fifths: number): number => {
-    const sharps = ['F', 'C', 'G', 'D', 'A', 'E', 'B'] as const;
-    const flats = ['B', 'E', 'A', 'D', 'G', 'C', 'F'] as const;
-    const up = step.toUpperCase();
-    if (fifths > 0) return sharps.slice(0, Math.min(7, fifths)).includes(up as any) ? 1 : 0;
-    if (fifths < 0) return flats.slice(0, Math.min(7, -fifths)).includes(up as any) ? -1 : 0;
-    return 0;
-  };
-
-  const notes = getByTag(measureEl, 'note');
-  let pitchIndex = 0;
-  for (let i = 0; i < notes.length; i++) {
-    const note = notes[i];
-    if (!note || getByTag(note, 'pitch').length === 0) continue;
-
-    const staffEl = getByTag(note, 'staff')[0];
-    const noteStaffNumber = staffEl ? Number(staffEl.textContent ?? '') : 1;
-    if (Number.isFinite(noteStaffNumber) && noteStaffNumber !== locator.staffNumber) continue;
-    if (!Number.isFinite(noteStaffNumber) && locator.staffNumber !== 1) continue;
-
-    if (locator.voice) {
-      const voiceEl = getByTag(note, 'voice')[0];
-      const v = voiceEl?.textContent?.trim();
-      if (v !== locator.voice) continue;
-    }
-
-    if (pitchIndex === locator.indexInMeasure) {
-      const pitch = getByTag(note, 'pitch')[0];
-      if (!pitch) break;
-
-      const stepEl = getByTag(pitch, 'step')[0];
-      const step = stepEl?.textContent?.trim() ?? '';
-      const fifths = getActiveKeyFifths();
-      const keyAlter = step ? keyAlterForStep(step, fifths) : 0;
-
-      let alterEl = getByTag(pitch, 'alter')[0];
-      if (keyAlter === 0) {
-        alterEl?.remove();
-      } else {
-        if (!alterEl) {
-          alterEl = createEl('alter');
-          pitch.appendChild(alterEl);
-        }
-        alterEl.textContent = String(keyAlter);
-      }
-
-      const accEl = getByTag(note, 'accidental')[0];
-      accEl?.remove();
-
-      return new XMLSerializer().serializeToString(doc);
-    }
-    pitchIndex++;
-  }
-
-  return null;
+  const fifths = getActiveKeyFifths(doc, locator.partId, locator.measureIndex);
+  const keyAlter = note.pitch.step ? keyAlterForStep(note.pitch.step, fifths) : 0;
+  if (keyAlter === 0) delete note.pitch.alter;
+  else note.pitch.alter = keyAlter;
+  delete note.accidental;
+  return doc;
 }

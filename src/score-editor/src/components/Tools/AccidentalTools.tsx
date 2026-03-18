@@ -1,35 +1,36 @@
 import { applyAccidental, clearAccidental } from '../../helpers/accidentalHelpers';
 import { useSelectionSnapshot, selectionStoreSetPendingLocator } from '../../helpers/selectionStore';
+import type { MusicXmlDocument } from '../../models/musicXmlDocument';
 
 type Props = {
-  musicXmlFile: string | null;
-  setMusicXmlFile: (xml: string) => void;
+  musicDoc: MusicXmlDocument | null;
+  setMusicDoc: (doc: MusicXmlDocument | null) => void;
 };
 
 export function AccidentalTools({
-  musicXmlFile,
-  setMusicXmlFile,
+  musicDoc,
+  setMusicDoc,
 }: Props) {
   const { hasSelection, locator } = useSelectionSnapshot();
   const isRestSelected = locator?.target === 'rest';
   const disabled = !hasSelection || isRestSelected;
 
   const apply = (alter: number, accidentalName: string) => {
-    if (!musicXmlFile) return;
+    if (!musicDoc) return;
     if (!locator) return;
-    const newXml = applyAccidental(musicXmlFile, locator, alter, accidentalName);
-    if (!newXml) return;
+    const next = applyAccidental(musicDoc, locator, alter, accidentalName);
+    if (!next) return;
     selectionStoreSetPendingLocator(locator);
-    setMusicXmlFile(newXml);
+    setMusicDoc(next);
   };
 
   const clear = () => {
-    if (!musicXmlFile) return;
+    if (!musicDoc) return;
     if (!locator) return;
-    const newXml = clearAccidental(musicXmlFile, locator);
-    if (!newXml) return;
+    const next = clearAccidental(musicDoc, locator);
+    if (!next) return;
     selectionStoreSetPendingLocator(locator);
-    setMusicXmlFile(newXml);
+    setMusicDoc(next);
   };
 
   return (

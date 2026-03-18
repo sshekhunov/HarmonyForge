@@ -3,31 +3,32 @@ import { DurationTools } from './Tools/DurationTools';
 import { FileTools } from './Tools/FileTools';
 import { HistoryTools } from './Tools/HistoryTools';
 import { ZoomTools } from './Tools/ZoomTools';
+import type { MusicXmlDocument } from '../models/musicXmlDocument';
 
 type Props = {
-  musicXmlFile: string | null;
-  setMusicXmlFile: (xml: string) => void;
+  musicDoc: MusicXmlDocument | null;
+  setMusicDoc: (doc: MusicXmlDocument | null) => void;
   zoom: number;
   setZoom: (next: number) => void;
 };
 
 export function TopPanel({
-  musicXmlFile,
-  setMusicXmlFile,
+  musicDoc,
+  setMusicDoc,
   zoom,
   setZoom,
 }: Props) {
   return (
     <div className="score-editor__panel">
-      <FileTools musicXmlFile={musicXmlFile} setMusicXmlFile={setMusicXmlFile} />
+      <FileTools musicDoc={musicDoc} setMusicDoc={setMusicDoc} />
       <span className="score-editor__separator" aria-hidden />
-      <HistoryTools musicXmlFile={musicXmlFile} setMusicXmlFile={setMusicXmlFile} />
+      <HistoryTools musicDoc={musicDoc} setMusicDoc={setMusicDoc} />
       <span className="score-editor__separator" aria-hidden />
       <ZoomTools zoom={zoom} setZoom={setZoom} />
       <span className="score-editor__separator" aria-hidden />
-      <DurationTools musicXmlFile={musicXmlFile} setMusicXmlFile={setMusicXmlFile} />
+      <DurationTools musicDoc={musicDoc} setMusicDoc={setMusicDoc} />
       <span className="score-editor__separator" aria-hidden />
-      <AccidentalTools musicXmlFile={musicXmlFile} setMusicXmlFile={setMusicXmlFile} />
+      <AccidentalTools musicDoc={musicDoc} setMusicDoc={setMusicDoc} />
     </div>
   );
 }

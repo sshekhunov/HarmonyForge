@@ -1,12 +1,15 @@
 import { FolderOpen, Save } from 'lucide-react';
 import { useRef } from 'react';
+import type { MusicXmlDocument } from '../../models/musicXmlDocument';
+import { musicXmlFromString, musicXmlToString } from '../../helpers/musicXmlHelper';
+import { historyReset } from '../../services/historyService';
 
 type Props = {
-  musicXmlFile: string | null;
-  setMusicXmlFile: (xml: string) => void;
+  musicDoc: MusicXmlDocument | null;
+  setMusicDoc: (doc: MusicXmlDocument | null) => void;
 };
 
-export function FileTools({ musicXmlFile, setMusicXmlFile }: Props) {
+export function FileTools({ musicDoc, setMusicDoc }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -15,15 +18,19 @@ export function FileTools({ musicXmlFile, setMusicXmlFile }: Props) {
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result;
-      if (typeof text === 'string') setMusicXmlFile(text);
+      if (typeof text === 'string') {
+        historyReset();
+        setMusicDoc(musicXmlFromString(text));
+      }
     };
     reader.readAsText(file);
     e.target.value = '';
   };
 
   const handleSave = () => {
-    if (!musicXmlFile) return;
-    const blob = new Blob([musicXmlFile], {
+    if (!musicDoc) return;
+    const xml = musicXmlToString(musicDoc);
+    const blob = new Blob([xml], {
       type: 'application/vnd.recordare.musicxml+xml',
     });
     const url = URL.createObjectURL(blob);
@@ -59,7 +66,7 @@ export function FileTools({ musicXmlFile, setMusicXmlFile }: Props) {
         type="button"
         className="score-editor__btn score-editor__btn--icon-only"
         onClick={handleSave}
-        disabled={!musicXmlFile}
+        disabled={!musicDoc}
         title="Save File"
         aria-label="Save File"
       >

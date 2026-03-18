@@ -5,6 +5,7 @@ import {
   highlightNoteByLocator,
 } from '../helpers/noteSelection';
 import type { GraphicNote } from '../models/osmd';
+import type { MusicXmlDocument } from '../models/musicXmlDocument';
 import {
   selectionStoreClearSelection,
   selectionStoreClearPendingLocator,
@@ -13,6 +14,7 @@ import {
   selectionStoreSetSelectedNote,
 } from '../helpers/selectionStore';
 import { historyClearApplying, historyIsApplying, historyRecord, historyReset } from '../services/historyService';
+import { musicXmlToString } from '../helpers/musicXmlHelper';
 import { TopPanel } from './TopPanel';
 import './ScoreEditor.css';
 
@@ -51,7 +53,7 @@ export function ScoreEditor() {
   const containerRef = useRef<HTMLDivElement>(null);
   const osmdRef = useRef<IOSMDInstance | null>(null);
   const selectedNoteRef = useRef<GraphicNote | null>(null);
-  const [musicXmlFile, setMusicXmlFile] = useState<string | null>(null);
+  const [musicDoc, setMusicDoc] = useState<MusicXmlDocument | null>(null);
   const [zoom, setZoom] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
   const pendingScrollRef = useRef<{ top: number; left: number } | null>(null);
@@ -131,8 +133,9 @@ export function ScoreEditor() {
   );
 
   useEffect(() => {
-    if (musicXmlFile) void loadXmlIntoOsmd(musicXmlFile);
-  }, [musicXmlFile, loadXmlIntoOsmd]);
+    const xml = musicDoc ? musicXmlToString(musicDoc) : null;
+    if (xml) void loadXmlIntoOsmd(xml);
+  }, [musicDoc, loadXmlIntoOsmd]);
 
   useEffect(() => {
     const osmd = osmdRef.current;
@@ -188,11 +191,12 @@ export function ScoreEditor() {
   return (
     <div className="score-editor">
       <TopPanel
-        musicXmlFile={musicXmlFile}
+        musicDoc={musicDoc}
         zoom={zoom}
         setZoom={handleSetZoom}
-        setMusicXmlFile={(xml) => {          
-          if (musicXmlFile && containerRef.current) {
+        setMusicDoc={(nextDoc) => {
+          const prevDoc = musicDoc;
+          if (prevDoc && containerRef.current) {
             pendingScrollRef.current = {
               top: containerRef.current.scrollTop,
               left: containerRef.current.scrollLeft,
@@ -200,13 +204,13 @@ export function ScoreEditor() {
           } else {
             pendingScrollRef.current = null;
           }
-          if (!musicXmlFile) {
+          if (!prevDoc) {
             historyReset();
-          } else if (!historyIsApplying()) {
-            historyRecord(musicXmlFile, xml);
+          } else if (!historyIsApplying() && nextDoc) {
+            historyRecord(prevDoc, nextDoc);
           }
           historyClearApplying();
-          setMusicXmlFile(xml);
+          setMusicDoc(nextDoc);
         }}
       />
       <div className="score-editor__viewport">

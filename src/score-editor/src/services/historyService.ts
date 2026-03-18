@@ -1,18 +1,11 @@
 import { useEffect, useState } from 'react';
-import { diff_match_patch } from 'diff-match-patch';
-
-type PatchPair = {
-  forwardText: string;
-  backwardText: string;
-};
+import type { MusicXmlDocument } from '../models/musicXmlDocument';
 
 type State = {
-  undo: PatchPair[];
-  redo: PatchPair[];
+  undo: MusicXmlDocument[];
+  redo: MusicXmlDocument[];
   isApplying: boolean;
 };
-
-const dmp = new diff_match_patch();
 
 const state: State = {
   undo: [],
@@ -21,21 +14,14 @@ const state: State = {
 };
 
 const listeners = new Set<() => void>();
+
 function emit() {
   for (const l of listeners) l();
 }
 
-function makePatchText(fromText: string, toText: string): string {
-  const patches = dmp.patch_make(fromText, toText);
-  return dmp.patch_toText(patches);
-}
-
-function applyPatchText(text: string, patchText: string): string | null {
-  const patches = dmp.patch_fromText(patchText);
-  const [result, applied] = dmp.patch_apply(patches, text) as [string, boolean[]];
-  return applied.every(Boolean) ? result : null;
-}
-
+/**
+ * Clears all undo/redo history.
+ */
 export function historyReset() {
   state.undo = [];
   state.redo = [];
@@ -43,23 +29,36 @@ export function historyReset() {
   emit();
 }
 
+/**
+ * Indicates that the next document change is caused by undo/redo.
+ */
 export function historyIsApplying(): boolean {
   return state.isApplying;
 }
 
+/**
+ * Marks that the next document change is caused by undo/redo.
+ */
 export function historyMarkApplying() {
   state.isApplying = true;
 }
 
+/**
+ * Clears the undo/redo applying marker.
+ */
 export function historyClearApplying() {
   state.isApplying = false;
 }
 
-export function historyRecord(prevXml: string, nextXml: string) {
-  if (prevXml === nextXml) return;
-  const forwardText = makePatchText(prevXml, nextXml);
-  const backwardText = makePatchText(nextXml, prevXml);
-  state.undo.push({ forwardText, backwardText });
+/**
+ * Records a document change.
+ *
+ * The editor stores full snapshots so the MusicXML model is only built from XML
+ * when a file is opened (not during normal undo/redo).
+ */
+export function historyRecord(prevDoc: MusicXmlDocument, nextDoc: MusicXmlDocument) {
+  if (prevDoc === nextDoc) return;
+  state.undo.push(structuredClone(prevDoc));
   state.redo = [];
   state.isApplying = false;
   emit();
@@ -73,31 +72,26 @@ export function historyCanRedo(): boolean {
   return state.redo.length > 0;
 }
 
-export function historyUndo(currentXml: string): string | null {
-  const pair = state.undo.pop();
-  if (!pair) return null;
-  const prev = applyPatchText(currentXml, pair.backwardText);
-  if (prev == null) {
-    // If patch fails, put it back.
-    state.undo.push(pair);
-    return null;
-  }
-  state.redo.push(pair);
+/**
+ * Returns the previous document snapshot and moves the current snapshot to redo.
+ */
+export function historyUndo(currentDoc: MusicXmlDocument): MusicXmlDocument | null {
+  const prev = state.undo.pop();
+  if (!prev) return null;
+  state.redo.push(structuredClone(currentDoc));
   emit();
-  return prev;
+  return structuredClone(prev);
 }
 
-export function historyRedo(currentXml: string): string | null {
-  const pair = state.redo.pop();
-  if (!pair) return null;
-  const next = applyPatchText(currentXml, pair.forwardText);
-  if (next == null) {
-    state.redo.push(pair);
-    return null;
-  }
-  state.undo.push(pair);
+/**
+ * Returns the next document snapshot and moves the current snapshot to undo.
+ */
+export function historyRedo(currentDoc: MusicXmlDocument): MusicXmlDocument | null {
+  const next = state.redo.pop();
+  if (!next) return null;
+  state.undo.push(structuredClone(currentDoc));
   emit();
-  return next;
+  return structuredClone(next);
 }
 
 function getSnapshot() {
