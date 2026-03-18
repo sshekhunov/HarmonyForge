@@ -11,10 +11,12 @@ import {
   selectionStoreClearPendingLocator,
   selectionStorePeekPendingLocator,
   selectionStoreSetMeasureList,
+  selectionStoreSetPendingLocator,
   selectionStoreSetSelectedNote,
 } from '../helpers/selectionStore';
 import { historyClearApplying, historyIsApplying, historyRecord, historyReset } from '../services/historyService';
 import { musicXmlToString } from '../helpers/musicXmlHelper';
+import { noteDragPointerCancel, noteDragPointerDown, noteDragPointerMove, noteDragPointerUp, type NoteDragState } from '../helpers/noteDragHelpers';
 import { TopPanel } from './TopPanel';
 import './ScoreEditor.css';
 
@@ -53,6 +55,7 @@ export function ScoreEditor() {
   const containerRef = useRef<HTMLDivElement>(null);
   const osmdRef = useRef<IOSMDInstance | null>(null);
   const selectedNoteRef = useRef<GraphicNote | null>(null);
+  const dragRef = useRef<NoteDragState | null>(null);
   const [musicDoc, setMusicDoc] = useState<MusicXmlDocument | null>(null);
   const [zoom, setZoom] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
@@ -157,6 +160,9 @@ export function ScoreEditor() {
 
   const handleOsmdClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      // If pointer-dragging moved the note, suppress the click selection toggle.
+      const drag = dragRef.current;
+      if (drag?.active || drag?.moved) return;
       const osmd = osmdRef.current as IOsmdWithGraphic | null;
       if (!osmd || !containerRef.current) return;
       const scroller = containerRef.current;
@@ -186,6 +192,77 @@ export function ScoreEditor() {
       restoreScrollBurst(scroller, scrollBefore);
     },
     [restoreScrollBurst]
+  );
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
+      const osmd = osmdRef.current as IOsmdWithGraphic | null;
+      const scroller = containerRef.current;
+      if (!osmd || !scroller) return;
+      const measureList = getMeasureList(osmd);
+      if (!measureList) return;
+
+      const drag = noteDragPointerDown({
+        measureList: measureList as any,
+        clientX: e.clientX,
+        clientY: e.clientY,
+        fallbackTarget: e.target as Node,
+        pointerId: e.pointerId,
+        button: e.button,
+        prevSelectedNote: selectedNoteRef.current,
+        onSelect: (note) => {
+          selectedNoteRef.current = note;
+          selectionStoreSetSelectedNote(note);
+          osmd.render();
+        },
+      });
+      if (!drag) return;
+      dragRef.current = drag;
+
+      scroller.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    []
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      if (!drag?.active) return;
+      if (e.pointerId !== drag.pointerId) return;
+
+      noteDragPointerMove(drag, e.clientY);
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    []
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      if (!drag?.active) return;
+      if (e.pointerId !== drag.pointerId) return;
+
+      noteDragPointerUp(drag, musicDoc, selectionStoreSetPendingLocator, (doc) => setMusicDoc(doc));
+      dragRef.current = null;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    [musicDoc]
+  );
+
+  const handlePointerCancel = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      if (!drag?.active) return;
+      if (e.pointerId !== drag.pointerId) return;
+      noteDragPointerCancel(drag);
+      dragRef.current = null;
+    },
+    []
   );
 
   return (
@@ -220,6 +297,10 @@ export function ScoreEditor() {
           className="score-editor__osmd"
           style={{ ['--osmd-zoom' as any]: zoom } as React.CSSProperties}
           onClick={handleOsmdClick}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
           role="application"
           aria-label="Score: click a note to select it"
         />
