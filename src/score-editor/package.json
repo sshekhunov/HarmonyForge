@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "diff-match-patch": "^1.0.5",
+    "lucide-react": "^0.577.0",
     "opensheetmusicdisplay": "^1.9.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

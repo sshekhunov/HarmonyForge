@@ -59,6 +59,7 @@
 
 .score-editor__btn-icon svg {
   vertical-align: middle;
+  fill: none;
 }
 
 .score-editor__sr-only {
