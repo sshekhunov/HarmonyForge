@@ -12,6 +12,7 @@ type DotValue = 0 | 1 | 2;
 type Props = {
   musicDoc: MusicXmlDocument | null;
   setMusicDoc: (doc: MusicXmlDocument | null) => void;
+  onOpenFile?: (doc: MusicXmlDocument | null) => void;
   zoom: number;
   setZoom: (next: number) => void;
   editMode: EditMode;
@@ -22,6 +23,7 @@ type Props = {
 export function TopPanel({
   musicDoc,
   setMusicDoc,
+  onOpenFile,
   zoom,
   setZoom,
   editMode,
@@ -30,7 +32,7 @@ export function TopPanel({
 }: Props) {
   return (
     <div className="score-editor__panel">
-      <FileTools musicDoc={musicDoc} setMusicDoc={setMusicDoc} />
+      <FileTools musicDoc={musicDoc} setMusicDoc={setMusicDoc} onOpenFile={onOpenFile} />
       <span className="score-editor__separator" aria-hidden />
       <HistoryTools musicDoc={musicDoc} setMusicDoc={setMusicDoc} />
       <span className="score-editor__separator" aria-hidden />

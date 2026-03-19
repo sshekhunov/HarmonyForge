@@ -483,6 +483,10 @@ export function ScoreEditor() {
         zoom={zoom}
         setZoom={handleSetZoom}
         setMusicDoc={applyDocChange}
+        onOpenFile={(doc) => {
+          historyReset();
+          setMusicDoc(doc);
+        }}
         editMode={editMode}
         setEditMode={setEditMode}
         onDurationSelectionChange={(id, dots) => setCreateDuration({ id, dots })}

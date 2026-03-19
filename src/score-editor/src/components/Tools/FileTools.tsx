@@ -2,14 +2,14 @@ import { FolderOpen, Save } from 'lucide-react';
 import { useRef } from 'react';
 import type { MusicXmlDocument } from '../../models/musicXmlDocument';
 import { musicXmlFromString, musicXmlToString } from '../../helpers/musicXmlHelper';
-import { historyReset } from '../../services/historyService';
 
 type Props = {
   musicDoc: MusicXmlDocument | null;
   setMusicDoc: (doc: MusicXmlDocument | null) => void;
+  onOpenFile?: (doc: MusicXmlDocument | null) => void;
 };
 
-export function FileTools({ musicDoc, setMusicDoc }: Props) {
+export function FileTools({ musicDoc, setMusicDoc, onOpenFile }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -19,8 +19,12 @@ export function FileTools({ musicDoc, setMusicDoc }: Props) {
     reader.onload = (event) => {
       const text = event.target?.result;
       if (typeof text === 'string') {
-        historyReset();
-        setMusicDoc(musicXmlFromString(text));
+        const doc = musicXmlFromString(text);
+        if (onOpenFile) {
+          onOpenFile(doc);
+        } else {
+          setMusicDoc(doc);
+        }
       }
     };
     reader.readAsText(file);
