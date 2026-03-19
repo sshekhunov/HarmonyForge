@@ -5,55 +5,18 @@ import { clearNoteHighlight, findClickedNote, findNearestBeatOnStaff, getSelecte
 import { eraseNoteAtLocator } from './noteEraseHelpers';
 import { addNoteAtHoveredBeat } from './noteDrawHelpers';
 import { noteDragPointerCancel, noteDragPointerDown, noteDragPointerMove, noteDragPointerUp, type NoteDragState } from './noteDragHelpers';
+import {
+  clientToSvg,
+  guessStaffBounds,
+  staffStepFromBounds,
+  computeLedgerLineYs,
+  drawLedgerLines,
+} from './staffLedgerHelpers';
 
 export type DurationValue = 'whole' | 'half' | 'quarter' | 'eighth' | '16th' | '32nd' | '64th';
 export type DotValue = 0 | 1 | 2;
 
 type ApplyDocChange = (doc: MusicXmlDocument | null) => void;
-
-function guessStaffBounds(svg: SVGSVGElement, x: number, nearY: number): { top: number; bottom: number } | null {
-  const candidates: Array<{ y: number }> = [];
-  const els = svg.querySelectorAll('path, line');
-  for (const el of els) {
-    const r = (el as SVGGraphicsElement).getBBox?.();
-    if (!r) continue;
-    if (r.width < 80) continue;
-    if (r.height > 3) continue;
-    if (x < r.x - 5 || x > r.x + r.width + 5) continue;
-    const cy = r.y + r.height / 2;
-    if (Math.abs(cy - nearY) > 300) continue;
-    candidates.push({ y: cy });
-  }
-  if (candidates.length < 5) return null;
-  candidates.sort((a, b) => Math.abs(a.y - nearY) - Math.abs(b.y - nearY));
-  const nearest5 = candidates.slice(0, 5).map((c) => c.y);
-  const top = Math.min(...nearest5);
-  const bottom = Math.max(...nearest5);
-  if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom <= top) return null;
-  return { top, bottom };
-}
-
-function clientToSvg(svg: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } | null {
-  try {
-    const ctm = svg.getScreenCTM?.();
-    if (!ctm) return null;
-    const inv = ctm.inverse();
-    if (typeof (globalThis as any).DOMPoint === 'function') {
-      const p = new (globalThis as any).DOMPoint(clientX, clientY).matrixTransform(inv);
-      if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
-      return { x: p.x, y: p.y };
-    }
-    const pt = svg.createSVGPoint?.();
-    if (!pt) return null;
-    pt.x = clientX;
-    pt.y = clientY;
-    const p2 = pt.matrixTransform(inv);
-    if (!Number.isFinite(p2.x) || !Number.isFinite(p2.y)) return null;
-    return { x: p2.x, y: p2.y };
-  } catch {
-    return null;
-  }
-}
 
 export function eraseModePointerDown(args: {
   measureList: MeasureList;
@@ -151,7 +114,7 @@ export function drawModePointerMove(args: {
   const guessed = guessStaffBounds(args.svg, cx, cy0);
   const staffBounds = guessed ?? staffBoundsFromAnchor;
   const staffStep =
-    staffBounds ? Math.max(0.5, ((staffBounds.bottom - staffBounds.top) / 4) / 2) : staffStepFromAnchor;
+    staffBounds ? staffStepFromBounds(staffBounds.top, staffBounds.bottom) : staffStepFromAnchor;
   const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, Math.round(n)));
   const steps = clamp(-(pt.y - cy0) / staffStep, -48, 48);
   const y = cy0 - steps * staffStep;
@@ -165,8 +128,6 @@ export function drawModePointerMove(args: {
     args.svg.appendChild(g);
     args.setDrawPreview({ svg: args.svg, g });
   }
-  const g = (args.drawPreview?.svg === args.svg ? args.drawPreview.g : (args.svg.querySelector('g[data-hf-draw-preview="1"]') as SVGGElement | null))
-    ?? (args.setDrawPreview as any); // never used, but keeps TS happy for control flow
   const group = (args.drawPreview?.svg === args.svg ? args.drawPreview.g : null) ?? (args.svg.querySelector('g[data-hf-draw-preview="1"]') as SVGGElement | null);
   if (!group) return true;
   while (group.firstChild) group.removeChild(group.firstChild);
@@ -184,29 +145,10 @@ export function drawModePointerMove(args: {
 
   const topY = staffBounds?.top ?? (cy0 - 4 * staffStep);
   const bottomY = staffBounds?.bottom ?? (cy0 + 4 * staffStep);
-  const beyondTopSteps = Math.max(0, Math.ceil((topY - y) / staffStep));
-  const beyondBottomSteps = Math.max(0, Math.ceil((y - bottomY) / staffStep));
-  const ys: number[] = [];
-  const step2 = staffStep * 2;
-  if (beyondTopSteps >= 2) {
-    const lines = Math.floor(beyondTopSteps / 2);
-    for (let i = 1; i <= lines; i++) ys.push(topY - i * step2);
-  } else if (beyondBottomSteps >= 2) {
-    const lines = Math.floor(beyondBottomSteps / 2);
-    for (let i = 1; i <= lines; i++) ys.push(bottomY + i * step2);
-  }
-  const halfWidth = 11;
-  for (const ly of ys) {
-    const line = document.createElementNS(ns, 'line');
-    line.setAttribute('x1', String(cx - halfWidth));
-    line.setAttribute('x2', String(cx + halfWidth));
-    line.setAttribute('y1', String(ly));
-    line.setAttribute('y2', String(ly));
-    line.setAttribute('stroke', '#c00');
-    line.setAttribute('stroke-width', '1');
-    line.setAttribute('stroke-linecap', 'round');
-    group.appendChild(line);
-  }
+  const ys = computeLedgerLineYs(topY, bottomY, y, staffStep);
+  const ledgerG = document.createElementNS(ns, 'g');
+  group.appendChild(ledgerG);
+  drawLedgerLines(ledgerG, cx, 11, ys, '#c00');
   return true;
 }
 

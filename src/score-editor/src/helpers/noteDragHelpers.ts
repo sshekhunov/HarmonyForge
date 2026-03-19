@@ -5,6 +5,13 @@ import type { GraphicNote } from '../models/osmd';
 import { clearAccidental } from './accidentalHelpers';
 import { clearAllNoteHighlights, findClickedNote, getSelectedNoteLocator } from './noteSelection';
 import type { MeasureList } from '../models/osmd';
+import {
+  clientToSvg,
+  guessStaffBounds,
+  staffStepFromBounds,
+  computeLedgerLineYs,
+  drawLedgerLines as drawLedgerLinesIntoGroup,
+} from './staffLedgerHelpers';
 
 const STEPS: Array<MusicXmlPitch['step']> = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 const STEP_TO_SEMITONE: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
@@ -344,58 +351,12 @@ function getClosestSvg(el: Element | null): SVGSVGElement | null {
   return null;
 }
 
-/** Finds the top and bottom Y (SVG units) of the five staff lines near the given note position. */
-function guessStaffBounds(svg: SVGSVGElement, noteCenterX: number, nearY: number): { top: number; bottom: number } | null {
-  const candidates: Array<{ y: number; top: number; bottom: number }> = [];
-  const els = svg.querySelectorAll('path, line');
-  for (const el of els) {
-    const r = (el as SVGGraphicsElement).getBBox?.();
-    if (!r) continue;
-    if (r.width < 80) continue;
-    if (r.height > 3) continue;
-    if (noteCenterX < r.x - 5 || noteCenterX > r.x + r.width + 5) continue;
-    const cy = r.y + r.height / 2;
-    if (Math.abs(cy - nearY) > 300) continue;
-    candidates.push({ y: cy, top: r.y, bottom: r.y + r.height });
-  }
-  if (candidates.length < 5) return null;
-  candidates.sort((a, b) => Math.abs(a.y - nearY) - Math.abs(b.y - nearY));
-  const nearest5 = candidates.slice(0, 5);
-  const top = Math.min(...nearest5.map((c) => c.y));
-  const bottom = Math.max(...nearest5.map((c) => c.y));
-  if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom <= top) return null;
-  return { top, bottom };
-}
-
 /** Estimates one diatonic staff step in SVG units from the notehead’s bounding box height. */
 function estimateStaffStepSvgFromNotehead(notehead: Element | null): number {
   const g = notehead as unknown as SVGGraphicsElement | null;
   const r = g?.getBBox?.();
   const est = r ? r.height / 2 : 3;
   return Math.max(0.5, Math.min(50, est));
-}
-
-/** Converts client (viewport) coordinates to SVG user space using the SVG’s screen CTM inverse. */
-function clientToSvg(svgEl: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } | null {
-  try {
-    const ctm = svgEl.getScreenCTM?.();
-    if (!ctm) return null;
-    const inv = ctm.inverse();
-    if (typeof (globalThis as any).DOMPoint === 'function') {
-      const p = new (globalThis as any).DOMPoint(clientX, clientY).matrixTransform(inv);
-      if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
-      return { x: p.x, y: p.y };
-    }
-    const pt = svgEl.createSVGPoint?.();
-    if (!pt) return null;
-    pt.x = clientX;
-    pt.y = clientY;
-    const p2 = pt.matrixTransform(inv);
-    if (!Number.isFinite(p2.x) || !Number.isFinite(p2.y)) return null;
-    return { x: p2.x, y: p2.y };
-  } catch {
-    return null;
-  }
 }
 
 /** Approximates SVG units per screen pixel (Y) from the SVG’s screen CTM inverse. */
@@ -426,29 +387,6 @@ function clearLedgerLines(group: SVGGElement | null) {
 function removeLedgerGroup(group: SVGGElement | null) {
   if (!group) return;
   group.parentNode?.removeChild(group);
-}
-
-/** Draws horizontal ledger lines at the given Y positions (SVG units), centered on noteCenterX. */
-function drawLedgerLines(
-  group: SVGGElement,
-  noteCenterX: number,
-  halfWidth: number,
-  ys: number[],
-  stroke: string
-) {
-  const ns = 'http://www.w3.org/2000/svg';
-  clearLedgerLines(group);
-  for (const y of ys) {
-    const line = document.createElementNS(ns, 'line');
-    line.setAttribute('x1', String(noteCenterX - halfWidth));
-    line.setAttribute('x2', String(noteCenterX + halfWidth));
-    line.setAttribute('y1', String(y));
-    line.setAttribute('y2', String(y));
-    line.setAttribute('stroke', stroke);
-    line.setAttribute('stroke-width', '1');
-    line.setAttribute('stroke-linecap', 'round');
-    group.appendChild(line);
-  }
 }
 
 export type NoteDragStartArgs = {
@@ -498,9 +436,9 @@ export function noteDragPointerDown(args: NoteDragStartArgs): NoteDragState | nu
   const bounds = svg ? guessStaffBounds(svg, noteCenterX, noteCenterYSvg) : null;
   const staffTopY = bounds?.top ?? (noteCenterYSvg - 4 * estimateStaffStepSvgFromNotehead(firstHead));
   const staffBottomY = bounds?.bottom ?? (noteCenterYSvg + 4 * estimateStaffStepSvgFromNotehead(firstHead));
-   const staffStepSvg =
+  const staffStepSvg =
     bounds
-      ? Math.max(0.5, Math.min(50, ((staffBottomY - staffTopY) / 4) / 2))
+      ? staffStepFromBounds(staffTopY, staffBottomY)
       : estimateStaffStepSvgFromNotehead(firstHead);
   const staffStepPx = Math.max(1, Math.min(80, staffStepSvg / (svgUnitsPerPx || 1)));
   const ledgerGroup = svg ? ensureLedgerGroup(svg) : null;
@@ -556,23 +494,16 @@ export function noteDragPointerMove(
   applyDragPreview(drag.noteheadEls, snappedDyLocalPx);
 
   const projectedCenterYSvg = drag.noteCenterYSvg + (-diatonicSteps * drag.staffStepSvg);
-  const beyondTopSteps = Math.max(0, Math.ceil((drag.staffTopY - projectedCenterYSvg) / drag.staffStepSvg));
-  const beyondBottomSteps = Math.max(0, Math.ceil((projectedCenterYSvg - drag.staffBottomY) / drag.staffStepSvg));
-
-  const ys: number[] = [];
-  const step2 = drag.staffStepSvg * 2;
-  if (beyondTopSteps >= 2) {
-    const lines = Math.floor(beyondTopSteps / 2);
-    for (let i = 1; i <= lines; i++) ys.push(drag.staffTopY - i * step2);
-  } else if (beyondBottomSteps >= 2) {
-    const lines = Math.floor(beyondBottomSteps / 2);
-    for (let i = 1; i <= lines; i++) ys.push(drag.staffBottomY + i * step2);
-  }
-
+  const ys = computeLedgerLineYs(
+    drag.staffTopY,
+    drag.staffBottomY,
+    projectedCenterYSvg,
+    drag.staffStepSvg
+  );
   if (drag.ledgerGroup) {
     const headBox = (drag.noteheadEls[0] as unknown as SVGGraphicsElement | null)?.getBBox?.() ?? null;
     const halfWidth = headBox ? Math.max(5, headBox.width * 0.7) : 10;
-    drawLedgerLines(drag.ledgerGroup, drag.noteCenterX, halfWidth, ys, drag.color);
+    drawLedgerLinesIntoGroup(drag.ledgerGroup, drag.noteCenterX, halfWidth, ys, drag.color);
   }
 }
 
