@@ -6,6 +6,9 @@ import { HistoryTools } from './Tools/HistoryTools';
 import { ZoomTools } from './Tools/ZoomTools';
 import type { MusicXmlDocument } from '../models/musicXmlDocument';
 
+type DurationValue = 'whole' | 'half' | 'quarter' | 'eighth' | '16th' | '32nd' | '64th';
+type DotValue = 0 | 1 | 2;
+
 type Props = {
   musicDoc: MusicXmlDocument | null;
   setMusicDoc: (doc: MusicXmlDocument | null) => void;
@@ -13,6 +16,7 @@ type Props = {
   setZoom: (next: number) => void;
   editMode: EditMode;
   setEditMode: (mode: EditMode) => void;
+  onDurationSelectionChange?: (duration: DurationValue, dots: DotValue) => void;
 };
 
 export function TopPanel({
@@ -22,6 +26,7 @@ export function TopPanel({
   setZoom,
   editMode,
   setEditMode,
+  onDurationSelectionChange,
 }: Props) {
   return (
     <div className="score-editor__panel">
@@ -33,9 +38,14 @@ export function TopPanel({
       <span className="score-editor__separator" aria-hidden />
       <EditModeTools mode={editMode} setMode={setEditMode} />
       <span className="score-editor__separator" aria-hidden />
-      <DurationTools musicDoc={musicDoc} setMusicDoc={setMusicDoc} />
+      <DurationTools
+        musicDoc={musicDoc}
+        setMusicDoc={setMusicDoc}
+        editMode={editMode}
+        onSelectionChange={onDurationSelectionChange}
+      />
       <span className="score-editor__separator" aria-hidden />
-      <AccidentalTools musicDoc={musicDoc} setMusicDoc={setMusicDoc} />
+      <AccidentalTools musicDoc={musicDoc} setMusicDoc={setMusicDoc} editMode={editMode} />
     </div>
   );
 }

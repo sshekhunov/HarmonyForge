@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSelectionSnapshot } from '../../helpers/selectionStore';
 import { selectionStoreSetPendingLocator } from '../../helpers/selectionStore';
-import { applyDurationWithReflow, getDotCountFromDoc, getDurationIdFromDoc } from '../../helpers/durationHelpers';
+import { applyDurationWithReflow, getDotCountFromDoc, getDurationIdFromDoc } from '../../helpers/durationHelpers.ts';
 import type { MusicXmlDocument } from '../../models/musicXmlDocument';
+import type { EditMode } from './EditModeTools';
 
 type DurationValue = 'whole' | 'half' | 'quarter' | 'eighth' | '16th' | '32nd' | '64th';
 
@@ -69,9 +70,11 @@ function durationIdFromSelectedNote(selectedNote: unknown): DurationValue | null
 type Props = {
   musicDoc: MusicXmlDocument | null;
   setMusicDoc: (doc: MusicXmlDocument | null) => void;
+  editMode: EditMode;
+  onSelectionChange?: (duration: DurationValue, dots: DotValue) => void;
 };
 
-export function DurationTools({ musicDoc, setMusicDoc }: Props) {
+export function DurationTools({ musicDoc, setMusicDoc, editMode, onSelectionChange }: Props) {
   const { hasSelection, locator, selectedNote } = useSelectionSnapshot() as {
     hasSelection?: boolean;
     locator?: unknown;
@@ -87,6 +90,11 @@ export function DurationTools({ musicDoc, setMusicDoc }: Props) {
   const selectedFromNote = durationIdFromSelectedNote(selectedNote);
   const selected = selectedFromXml ?? selectedFromNote ?? manualSelected;
   const dot = dotFromXml ?? manualDot;
+  const durationToolsDisabled =
+    editMode === 'erase' || (editMode === 'select' && (!hasSelection || !selectedNote));
+  useEffect(() => {
+    onSelectionChange?.(selected, dot);
+  }, [dot, onSelectionChange, selected]);
 
   return (
     <span className="score-editor__durations" aria-label="Duration tools">
@@ -109,7 +117,7 @@ export function DurationTools({ musicDoc, setMusicDoc }: Props) {
                 setMusicDoc(next);
               }}
               aria-pressed={isSelected}
-              disabled={!hasSelection}
+              disabled={durationToolsDisabled}
               title={def.label}
               aria-label={`Set duration to ${def.label.toLowerCase()}`}
             >
@@ -137,7 +145,7 @@ export function DurationTools({ musicDoc, setMusicDoc }: Props) {
                 setMusicDoc(next);
               }}
               aria-pressed={isSelected}
-              disabled={!hasSelection}
+              disabled={durationToolsDisabled}
               title={d.label}
               aria-label={d.label}
             >

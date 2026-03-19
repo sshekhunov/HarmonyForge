@@ -1,6 +1,6 @@
-import { Eraser, MousePointer } from 'lucide-react';
+import { Eraser, MousePointer, Pencil } from 'lucide-react';
 
-export type EditMode = 'select' | 'erase';
+export type EditMode = 'select' | 'erase' | 'draw';
 
 type Props = {
   mode: EditMode;
@@ -20,6 +20,18 @@ export function EditModeTools({ mode, setMode }: Props) {
       >
         <span className="score-editor__btn-icon" aria-hidden>
           <MousePointer size={18} strokeWidth={1.75} />
+        </span>
+      </button>
+      <button
+        type="button"
+        className={`score-editor__btn score-editor__btn--icon-only score-editor__btn--toggle${mode === 'draw' ? ' is-active' : ''}`}
+        onClick={() => setMode('draw')}
+        aria-pressed={mode === 'draw'}
+        title="Draw"
+        aria-label="Draw"
+      >
+        <span className="score-editor__btn-icon" aria-hidden>
+          <Pencil size={18} strokeWidth={1.75} />
         </span>
       </button>
       <button

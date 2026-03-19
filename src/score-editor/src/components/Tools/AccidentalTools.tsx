@@ -1,35 +1,48 @@
 import { applyAccidental, clearAccidental } from '../../helpers/accidentalHelpers';
 import { useSelectionSnapshot, selectionStoreSetPendingLocator } from '../../helpers/selectionStore';
 import type { MusicXmlDocument } from '../../models/musicXmlDocument';
+import type { NoteLocator } from '../../models/musicXml';
+import type { EditMode } from './EditModeTools';
 
 type Props = {
   musicDoc: MusicXmlDocument | null;
   setMusicDoc: (doc: MusicXmlDocument | null) => void;
+  editMode: EditMode;
 };
 
 export function AccidentalTools({
   musicDoc,
   setMusicDoc,
+  editMode,
 }: Props) {
-  const { hasSelection, locator } = useSelectionSnapshot();
-  const isRestSelected = locator?.target === 'rest';
-  const disabled = !hasSelection || isRestSelected;
+  const { hasSelection, locator, selectedNote } = useSelectionSnapshot() as {
+    hasSelection?: boolean;
+    locator?: unknown;
+    selectedNote?: unknown;
+  };
+  const isRestSelected = Boolean(locator && (locator as { target?: string }).target === 'rest');
+  const disabled =
+    editMode === 'erase' ||
+    (editMode === 'select' && (!hasSelection || !selectedNote || isRestSelected));
+  const disabledBool: boolean = Boolean(disabled);
 
   const apply = (alter: number, accidentalName: string) => {
     if (!musicDoc) return;
-    if (!locator) return;
-    const next = applyAccidental(musicDoc, locator, alter, accidentalName);
+    const loc = locator as NoteLocator | null | undefined;
+    if (!loc) return;
+    const next = applyAccidental(musicDoc, loc, alter, accidentalName);
     if (!next) return;
-    selectionStoreSetPendingLocator(locator);
+    selectionStoreSetPendingLocator(loc);
     setMusicDoc(next);
   };
 
   const clear = () => {
     if (!musicDoc) return;
-    if (!locator) return;
-    const next = clearAccidental(musicDoc, locator);
+    const loc = locator as NoteLocator | null | undefined;
+    if (!loc) return;
+    const next = clearAccidental(musicDoc, loc);
     if (!next) return;
-    selectionStoreSetPendingLocator(locator);
+    selectionStoreSetPendingLocator(loc);
     setMusicDoc(next);
   };
 
@@ -39,7 +52,7 @@ export function AccidentalTools({
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
         onClick={() => apply(0, 'natural')}
-        disabled={disabled}
+        disabled={disabledBool}
         title="Natural (♮)"
         aria-label="Set note to natural"
       >
@@ -49,7 +62,7 @@ export function AccidentalTools({
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
         onClick={() => apply(1, 'sharp')}
-        disabled={disabled}
+        disabled={disabledBool}
         title="Sharp (♯)"
         aria-label="Set note to sharp"
       >
@@ -59,7 +72,7 @@ export function AccidentalTools({
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
         onClick={() => apply(-1, 'flat')}
-        disabled={disabled}
+        disabled={disabledBool}
         title="Flat (♭)"
         aria-label="Set note to flat"
       >
@@ -69,7 +82,7 @@ export function AccidentalTools({
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
         onClick={() => apply(2, 'double-sharp')}
-        disabled={disabled}
+        disabled={disabledBool}
         title="Double sharp (x)"
         aria-label="Set note to double sharp"
       >
@@ -79,7 +92,7 @@ export function AccidentalTools({
         type="button"
         className="score-editor__btn score-editor__btn--symbol"
         onClick={() => apply(-2, 'double-flat')}
-        disabled={disabled}
+        disabled={disabledBool}
         title="Double flat (𝄫)"
         aria-label="Set note to double flat"
       >
@@ -89,7 +102,7 @@ export function AccidentalTools({
         type="button"
         className="score-editor__btn score-editor__btn--symbol score-editor__btn--clear"
         onClick={clear}
-        disabled={disabled}
+        disabled={disabledBool}
         title="Remove accidental (note follows key signature)"
         aria-label="Remove accidental so note follows key signature"
       >

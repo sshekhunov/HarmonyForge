@@ -1,5 +1,5 @@
 import type { NoteLocator } from '../models/musicXml';
-import type { MusicXmlDocument } from '../models/musicXmlDocument';
+import type { MusicXmlDocument, MusicXmlPitch } from '../models/musicXmlDocument';
 import type { MusicXmlMeasureElement, MusicXmlNote } from '../models/musicXmlDocument';
 import { getIndexedPart } from './musicXmlHelper';
 
@@ -98,4 +98,21 @@ export function clearAccidental(current: MusicXmlDocument, locator: NoteLocator)
   else note.pitch.alter = keyAlter;
   delete note.accidental;
   return doc;
+}
+
+/**
+ * Returns a pitch with no explicit accidental: alter follows key signature (or 0).
+ * Use when adding new notes so they display like after "clear" (no accidental).
+ */
+export function pitchWithoutAccidental(
+  doc: MusicXmlDocument,
+  partId: string | undefined,
+  measureIndex: number,
+  pitch: MusicXmlPitch
+): MusicXmlPitch {
+  if (!pitch?.step) return pitch;
+  const fifths = getActiveKeyFifths(doc, partId, measureIndex);
+  const keyAlter = keyAlterForStep(pitch.step, fifths);
+  const alter = keyAlter === 0 ? undefined : keyAlter;
+  return { ...pitch, alter };
 }

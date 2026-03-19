@@ -172,6 +172,14 @@ export function clearNoteHighlight(note: GraphicNote | null): void {
 }
 
 /**
+ * Clears highlight from every note in the measure list so only one note can be selected at a time.
+ */
+export function clearAllNoteHighlights(measureList: MeasureList): void {
+  const { iterateNotes } = getMeasureListGraph(measureList);
+  iterateNotes((note) => clearNoteHighlight(note));
+}
+
+/**
  * Reads the 0-based measure index from an OSMD source note.
  */
 function getMeasureIndexFromSourceNote(sourceNote: unknown): number | null {
@@ -339,4 +347,132 @@ export function highlightNoteByLocator(
   };
 
   return tryHighlight(false) ?? tryHighlight(true);
+}
+
+function clientToSvg(svg: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } {
+  try {
+    const ctm = svg.getScreenCTM?.();
+    if (!ctm) return { x: clientX, y: clientY };
+    const inv = ctm.inverse();
+    if (typeof (globalThis as any).DOMPoint === 'function') {
+      const p = new (globalThis as any).DOMPoint(clientX, clientY).matrixTransform(inv);
+      return { x: p.x, y: p.y };
+    }
+    const pt = svg.createSVGPoint?.();
+    if (!pt) return { x: clientX, y: clientY };
+    pt.x = clientX;
+    pt.y = clientY;
+    const p2 = pt.matrixTransform(inv);
+    return { x: p2.x, y: p2.y };
+  } catch {
+    return { x: clientX, y: clientY };
+  }
+}
+
+export type DrawHoverAnchor = {
+  note: GraphicNote;
+  locator: NoteLocator;
+  cx: number;
+  cy: number;
+  staffStep: number;
+  staffBounds: { top: number; bottom: number };
+  svg: SVGSVGElement;
+  headBbox: { width: number; height: number } | null;
+};
+
+/**
+ * Finds the nearest note/rest (beat) when the pointer is over a staff region (staff ± 5 ledger steps).
+ * Uses staff hit-test then nearest-by-X to stick the draw preview to the correct beat.
+ */
+export function findNearestBeatOnStaff(
+  measureList: MeasureList,
+  svg: SVGSVGElement,
+  clientX: number,
+  clientY: number
+): DrawHoverAnchor | null {
+  const pt = clientToSvg(svg, clientX, clientY);
+  const entries: Array<{
+    note: GraphicNote;
+    cx: number;
+    cy: number;
+    measureIndex: number;
+    staffNumber: number;
+  }> = [];
+  const { iterateNotes } = getMeasureListGraph(measureList);
+  iterateNotes((note) => {
+    const head = note.getNoteheadSVGs?.()?.[0];
+    const r = (head as SVGGraphicsElement | undefined)?.getBoundingClientRect?.();
+    if (!r) return;
+    const centerX = r.left + r.width / 2;
+    const centerY = r.top + r.height / 2;
+    const svgPt = clientToSvg(svg, centerX, centerY);
+    const measureIndex = getMeasureIndexFromSourceNote(note.sourceNote);
+    const staffId = getStaffIdFromSourceNote(note.sourceNote);
+    if (measureIndex === null || staffId === null) return;
+    const staffNumber = toMusicXmlStaffNumber(staffId);
+    entries.push({
+      note,
+      cx: svgPt.x,
+      cy: svgPt.y,
+      measureIndex,
+      staffNumber,
+    });
+  });
+  if (entries.length === 0) return null;
+
+  const LEDGER_EXTRA = 5;
+  const staffBounds = (() => {
+    const candidates: number[] = [];
+    const els = svg.querySelectorAll('path, line');
+    for (const el of Array.from(els)) {
+      const r = (el as SVGElement).getBoundingClientRect?.();
+      if (!r || r.width < 80 || r.height > 3) continue;
+      const leftSvg = clientToSvg(svg, r.left, r.top + r.height / 2).x;
+      const rightSvg = clientToSvg(svg, r.right, r.top + r.height / 2).x;
+      if (pt.x < leftSvg - 5 || pt.x > rightSvg + 5) continue;
+      const centerY = r.top + r.height / 2;
+      const lineYSvg = clientToSvg(svg, r.left + r.width / 2, centerY).y;
+      if (Math.abs(lineYSvg - pt.y) > 350) continue;
+      candidates.push(lineYSvg);
+    }
+    if (candidates.length < 5) return null;
+    candidates.sort((a, b) => Math.abs(a - pt.y) - Math.abs(b - pt.y));
+    const nearest5 = candidates.slice(0, 5);
+    const top = Math.min(...nearest5);
+    const bottom = Math.max(...nearest5);
+    if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom <= top) return null;
+    return { top, bottom };
+  })();
+  if (!staffBounds) return null;
+
+  // One diatonic step = distance between adjacent line and space = (staff height) / 8.
+  const staffStep = Math.max(0.5, ((staffBounds.bottom - staffBounds.top) / 4) / 2);
+  const yMin = staffBounds.top - LEDGER_EXTRA * staffStep;
+  const yMax = staffBounds.bottom + LEDGER_EXTRA * staffStep;
+  const filtered = entries.filter((e) => e.cy >= yMin && e.cy <= yMax);
+  if (filtered.length === 0) return null;
+
+  let best = filtered[0]!;
+  let bestDx = Math.abs(best.cx - pt.x);
+  for (const e of filtered.slice(1)) {
+    const d = Math.abs(e.cx - pt.x);
+    if (d < bestDx) {
+      bestDx = d;
+      best = e;
+    }
+  }
+  const locator = getSelectedNoteLocator(measureList, best.note.sourceNote);
+  if (!locator) return null;
+  const head = best.note.getNoteheadSVGs?.()?.[0] as SVGGraphicsElement | undefined;
+  const headBbox = head?.getBBox?.() ?? null;
+  return {
+    note: best.note,
+    locator,
+    cx: best.cx,
+    cy: best.cy,
+    staffStep,
+    staffBounds,
+    svg,
+    headBbox: headBbox ? { width: headBbox.width, height: headBbox.height } : null,
+  };
 }

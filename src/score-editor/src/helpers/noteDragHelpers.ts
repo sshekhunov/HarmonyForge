@@ -3,7 +3,7 @@ import type { NoteLocator } from '../models/musicXml';
 import { getIndexedPart } from './musicXmlHelper';
 import type { GraphicNote } from '../models/osmd';
 import { clearAccidental } from './accidentalHelpers';
-import { clearNoteHighlight, findClickedNote, getSelectedNoteLocator } from './noteSelection';
+import { clearAllNoteHighlights, findClickedNote, getSelectedNoteLocator } from './noteSelection';
 import type { MeasureList } from '../models/osmd';
 
 const STEPS: Array<MusicXmlPitch['step']> = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
@@ -478,7 +478,7 @@ export function noteDragPointerDown(args: NoteDragStartArgs): NoteDragState | nu
   const locator = getSelectedNoteLocator(args.measureList, clickedNote.sourceNote as any);
   if (!locator) return null;
 
-  clearNoteHighlight(args.prevSelectedNote);
+  clearAllNoteHighlights(args.measureList);
   clickedNote.sourceNote.noteheadColor = '#c00';
   const color = clickedNote.sourceNote.noteheadColor ?? '#c00';
   args.onSelect(clickedNote);
