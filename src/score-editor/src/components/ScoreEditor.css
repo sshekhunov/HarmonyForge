@@ -91,6 +91,12 @@
   gap: 0.2rem;
 }
 
+.score-editor__editmode {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
 .score-editor__zoom-select {
   height: 2.25rem;
   padding: 0 0.5rem;
@@ -184,6 +190,14 @@
 
 .score-editor__osmd {
   zoom: var(--osmd-zoom);
+}
+
+.score-editor__osmd.is-select-mode {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath fill='%23222' d='M2 1l0 18l4-4l3 7l3-1.5l-3-7l6 0z'/%3E%3Cpath fill='%23fff' fill-opacity='0.35' d='M3.8 3.2l0 11.2l2.6-2.6l2.2 5.2l1-0.5l-2.2-5.2l4.8 0z'/%3E%3C/svg%3E") 2 1, auto;
+}
+
+.score-editor__osmd.is-erase-mode {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath fill='%23222' d='M2 1l0 18l4-4l3 7l3-1.5l-3-7l6 0z'/%3E%3Cpath fill='%23fff' fill-opacity='0.35' d='M3.8 3.2l0 11.2l2.6-2.6l2.2 5.2l1-0.5l-2.2-5.2l4.8 0z'/%3E%3Ccircle cx='20' cy='22' r='5' fill='%23fff' stroke='%23222' stroke-width='1.2'/%3E%3Cpath stroke='%23222' stroke-width='1.2' stroke-linecap='round' d='M17 19l6 6M23 19l-6 6'/%3E%3C/svg%3E") 2 1, auto;
 }
 
 .score-editor__osmd .osmd-container {

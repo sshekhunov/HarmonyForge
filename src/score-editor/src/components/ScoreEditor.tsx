@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   clearNoteHighlight,
   findClickedNote,
+  getSelectedNoteLocator,
   highlightNoteByLocator,
 } from '../helpers/noteSelection';
 import type { GraphicNote } from '../models/osmd';
@@ -19,6 +20,8 @@ import { musicXmlToString } from '../helpers/musicXmlHelper';
 import { noteDragPointerCancel, noteDragPointerDown, noteDragPointerMove, noteDragPointerUp, type NoteDragState } from '../helpers/noteDragHelpers';
 import { TopPanel } from './TopPanel';
 import './ScoreEditor.css';
+import type { EditMode } from './Tools/EditModeTools';
+import { eraseNoteAtLocator } from '../helpers/noteEraseHelpers';
 
 // OSMD: use interface because the package's UMD bundle export doesn't match its .d.ts
 interface IOSMDInstance {
@@ -56,8 +59,10 @@ export function ScoreEditor() {
   const osmdRef = useRef<IOSMDInstance | null>(null);
   const selectedNoteRef = useRef<GraphicNote | null>(null);
   const dragRef = useRef<NoteDragState | null>(null);
+  const hoverEraseNoteRef = useRef<GraphicNote | null>(null);
   const [musicDoc, setMusicDoc] = useState<MusicXmlDocument | null>(null);
   const [zoom, setZoom] = useState<number>(1);
+  const [editMode, setEditMode] = useState<EditMode>('select');
   const [error, setError] = useState<string | null>(null);
   const pendingScrollRef = useRef<{ top: number; left: number } | null>(null);
 
@@ -179,6 +184,7 @@ export function ScoreEditor() {
 
   const handleOsmdClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      if (editMode === 'erase') return;
       // If pointer-dragging moved the note, suppress the click selection toggle.
       const drag = dragRef.current;
       if (drag?.active || drag?.moved) return;
@@ -210,7 +216,7 @@ export function ScoreEditor() {
       osmd.render();
       restoreScrollBurst(scroller, scrollBefore);
     },
-    [restoreScrollBurst]
+    [editMode, restoreScrollBurst]
   );
 
   const handlePointerDown = useCallback(
@@ -221,6 +227,25 @@ export function ScoreEditor() {
       if (!osmd || !scroller) return;
       const measureList = getMeasureList(osmd);
       if (!measureList) return;
+
+      if (editMode === 'erase') {
+        const clicked = findClickedNote(measureList, e.clientX, e.clientY, e.target as Node);
+        if (!clicked?.sourceNote) return;
+        if ((clicked.sourceNote as any)?.isRest?.()) return;
+        if (!musicDoc) return;
+        const locator = getSelectedNoteLocator(measureList as any, clicked.sourceNote as any);
+        if (!locator) return;
+        const next = eraseNoteAtLocator(musicDoc, locator);
+        if (!next) return;
+        hoverEraseNoteRef.current = null;
+        selectedNoteRef.current = null;
+        selectionStoreSetSelectedNote(null);
+        selectionStoreSetPendingLocator(null);
+        applyDocChange(next);
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
 
       const drag = noteDragPointerDown({
         measureList: measureList as any,
@@ -243,12 +268,29 @@ export function ScoreEditor() {
       e.preventDefault();
       e.stopPropagation();
     },
-    []
+    [editMode, musicDoc]
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       const drag = dragRef.current;
+      if (editMode === 'erase') {
+        const osmd = osmdRef.current as IOsmdWithGraphic | null;
+        const scroller = containerRef.current;
+        if (!osmd || !scroller) return;
+        const measureList = getMeasureList(osmd);
+        if (!measureList) return;
+        const hovered = findClickedNote(measureList, e.clientX, e.clientY, e.target as Node);
+        if (hovered === hoverEraseNoteRef.current) return;
+        clearNoteHighlight(hoverEraseNoteRef.current);
+        hoverEraseNoteRef.current = hovered;
+        if (hovered?.sourceNote && !(hovered.sourceNote as any)?.isRest?.()) {
+          hovered.sourceNote.noteheadColor = '#c00';
+        }
+        osmd.render();
+        e.preventDefault();
+        return;
+      }
       if (!drag?.active) return;
       if (e.pointerId !== drag.pointerId) return;
 
@@ -256,11 +298,12 @@ export function ScoreEditor() {
       e.preventDefault();
       e.stopPropagation();
     },
-    [zoom]
+    [editMode, zoom]
   );
 
   const handlePointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      if (editMode === 'erase') return;
       const drag = dragRef.current;
       if (!drag?.active) return;
       if (e.pointerId !== drag.pointerId) return;
@@ -272,18 +315,27 @@ export function ScoreEditor() {
       e.preventDefault();
       e.stopPropagation();
     },
-    [applyDocChange, musicDoc]
+    [applyDocChange, editMode, musicDoc]
   );
 
   const handlePointerCancel = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       const drag = dragRef.current;
+      if (editMode === 'erase') {
+        const osmd = osmdRef.current as IOsmdWithGraphic | null;
+        if (osmd) {
+          clearNoteHighlight(hoverEraseNoteRef.current);
+          hoverEraseNoteRef.current = null;
+          osmd.render();
+        }
+        return;
+      }
       if (!drag?.active) return;
       if (e.pointerId !== drag.pointerId) return;
       noteDragPointerCancel(drag);
       dragRef.current = null;
     },
-    []
+    [editMode]
   );
 
   return (
@@ -293,12 +345,14 @@ export function ScoreEditor() {
         zoom={zoom}
         setZoom={handleSetZoom}
         setMusicDoc={applyDocChange}
+        editMode={editMode}
+        setEditMode={setEditMode}
       />
       <div className="score-editor__viewport">
         {error && <div className="score-editor__error" role="alert">{error}</div>}
         <div
           ref={containerRef}
-          className="score-editor__osmd"
+          className={`score-editor__osmd${editMode === 'erase' ? ' is-erase-mode' : ' is-select-mode'}`}
           style={{ ['--osmd-zoom' as any]: zoom } as React.CSSProperties}
           onClick={handleOsmdClick}
           onPointerDown={handlePointerDown}
