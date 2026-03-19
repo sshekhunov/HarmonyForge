@@ -57,6 +57,31 @@ async function createOsmd(container: HTMLElement): Promise<IOSMDInstance> {
   return new (Ctor as new (c: HTMLElement, o?: object) => IOSMDInstance)(container, { autoResize: true, drawTitle: true });
 }
 
+/**
+ * Finds the top and bottom Y (SVG units) of the five staff lines near the given X/Y.
+ */
+function guessStaffBounds(svg: SVGSVGElement, x: number, nearY: number): { top: number; bottom: number } | null {
+  const candidates: Array<{ y: number }> = [];
+  const els = svg.querySelectorAll('path, line');
+  for (const el of els) {
+    const r = (el as SVGGraphicsElement).getBBox?.();
+    if (!r) continue;
+    if (r.width < 80) continue;
+    if (r.height > 3) continue;
+    if (x < r.x - 5 || x > r.x + r.width + 5) continue;
+    const cy = r.y + r.height / 2;
+    if (Math.abs(cy - nearY) > 300) continue;
+    candidates.push({ y: cy });
+  }
+  if (candidates.length < 5) return null;
+  candidates.sort((a, b) => Math.abs(a.y - nearY) - Math.abs(b.y - nearY));
+  const nearest5 = candidates.slice(0, 5).map((c) => c.y);
+  const top = Math.min(...nearest5);
+  const bottom = Math.max(...nearest5);
+  if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom <= top) return null;
+  return { top, bottom };
+}
+
 export function ScoreEditor() {
   const containerRef = useRef<HTMLDivElement>(null);
   const osmdRef = useRef<IOSMDInstance | null>(null);
@@ -359,16 +384,20 @@ export function ScoreEditor() {
             })();
         const pt = { x: rawPt.x, y: rawPt.y };
 
-        const { cx, cy: cy0, staffStep, staffBounds: staffBoundsFromAnchor, locator } = anchor;
-        const staffBounds = staffBoundsFromAnchor;
+        const { cx, cy: cy0, staffStep: staffStepFromAnchor, staffBounds: staffBoundsFromAnchor, locator } = anchor;
+        const guessed = guessStaffBounds(svg, cx, cy0);
+        const staffBounds = guessed ?? staffBoundsFromAnchor;
+        const staffStep =
+          staffBounds
+            ? Math.max(0.5, ((staffBounds.bottom - staffBounds.top) / 4) / 2)
+            : staffStepFromAnchor;
         const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, Math.round(n)));
         const steps = clamp(-(pt.y - cy0) / staffStep, -48, 48);
         const y = cy0 - steps * staffStep;
         drawAnchorRef.current = { locator, steps, svg };
-        // Quarter-note head size in staff units (÷1.5 ×1.25): scales with zoom (SVG is inside zoomed container).
-        const drawPreviewRx = Math.max(1, ((staffStep * 2) / 1.5) * 1.25 - 1.5);
-        const drawPreviewRy = ((staffStep * 0.9) / 1.5) * 1.25;
-        const drawPreviewLedgerHalf = ((staffStep * 2.5) / 1.5) * 1.25;
+        const drawPreviewRx = 6.5;
+        const drawPreviewRy = 4.2;
+        const drawPreviewLedgerHalf = 11;
         const existing = drawPreviewRef.current;
         if (!existing || existing.svg !== svg) {
           if (existing) existing.g.parentNode?.removeChild(existing.g);

@@ -420,35 +420,93 @@ export function findNearestBeatOnStaff(
   });
   if (entries.length === 0) return null;
 
-  const LEDGER_EXTRA = 5;
-  const staffBounds = (() => {
-    const candidates: number[] = [];
+  const LEDGER_EXTRA = 10;
+  const computeStaffBoundsFromLines = (xRef: number, yRef: number): { top: number; bottom: number } | null => {
+    const lineYs: number[] = [];
     const els = svg.querySelectorAll('path, line');
     for (const el of Array.from(els)) {
       const r = (el as SVGElement).getBoundingClientRect?.();
-      if (!r || r.width < 80 || r.height > 3) continue;
-      const leftSvg = clientToSvg(svg, r.left, r.top + r.height / 2).x;
-      const rightSvg = clientToSvg(svg, r.right, r.top + r.height / 2).x;
-      if (pt.x < leftSvg - 5 || pt.x > rightSvg + 5) continue;
-      const centerY = r.top + r.height / 2;
-      const lineYSvg = clientToSvg(svg, r.left + r.width / 2, centerY).y;
-      if (Math.abs(lineYSvg - pt.y) > 350) continue;
-      candidates.push(lineYSvg);
+      if (!r) continue;
+      if (r.width < 120) continue;
+      if (r.height <= 0 || r.height > 3) continue;
+      if (r.width / r.height < 40) continue;
+      const yClient = r.top + r.height / 2;
+      const leftSvg = clientToSvg(svg, r.left, yClient).x;
+      const rightSvg = clientToSvg(svg, r.right, yClient).x;
+      if (xRef < leftSvg - 5 || xRef > rightSvg + 5) continue;
+      const ySvg = clientToSvg(svg, r.left + r.width / 2, yClient).y;
+      if (!Number.isFinite(ySvg)) continue;
+      lineYs.push(ySvg);
     }
-    if (candidates.length < 5) return null;
-    candidates.sort((a, b) => Math.abs(a - pt.y) - Math.abs(b - pt.y));
-    const nearest5 = candidates.slice(0, 5);
-    const top = Math.min(...nearest5);
-    const bottom = Math.max(...nearest5);
-    if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom <= top) return null;
-    return { top, bottom };
-  })();
-  if (!staffBounds) return null;
+    if (lineYs.length < 5) return null;
+    lineYs.sort((a, b) => a - b);
 
-  // One diatonic step = distance between adjacent line and space = (staff height) / 8.
+    const unique: number[] = [];
+    for (const y of lineYs) {
+      const last = unique[unique.length - 1];
+      if (typeof last === 'number' && Math.abs(y - last) < 0.25) continue;
+      unique.push(y);
+    }
+    if (unique.length < 5) return null;
+
+    type Staff = { top: number; bottom: number; score: number };
+    const staffs: Staff[] = [];
+    for (let i = 0; i + 4 < unique.length; i++) {
+      const ys = unique.slice(i, i + 5);
+      const d1 = ys[1]! - ys[0]!;
+      const d2 = ys[2]! - ys[1]!;
+      const d3 = ys[3]! - ys[2]!;
+      const d4 = ys[4]! - ys[3]!;
+      const avg = (d1 + d2 + d3 + d4) / 4;
+      if (!Number.isFinite(avg) || avg <= 0) continue;
+      const tol = Math.max(0.75, avg * 0.35);
+      if (Math.abs(d1 - avg) > tol) continue;
+      if (Math.abs(d2 - avg) > tol) continue;
+      if (Math.abs(d3 - avg) > tol) continue;
+      if (Math.abs(d4 - avg) > tol) continue;
+      const top = ys[0]!;
+      const bottom = ys[4]!;
+      const score = Math.abs(yRef - (top + bottom) / 2);
+      staffs.push({ top, bottom, score });
+    }
+    if (staffs.length === 0) return null;
+    staffs.sort((a, b) => a.score - b.score);
+    const best = staffs[0]!;
+    return { top: best.top, bottom: best.bottom };
+  };
+
+  let nearestX = entries[0]!;
+  let bestDx0 = Math.abs(nearestX.cx - pt.x);
+  for (const e of entries.slice(1)) {
+    const d = Math.abs(e.cx - pt.x);
+    if (d < bestDx0) {
+      bestDx0 = d;
+      nearestX = e;
+    }
+  }
+
+  const staffBounds = computeStaffBoundsFromLines(pt.x, pt.y)
+    ?? computeStaffBoundsFromLines(nearestX.cx, pt.y)
+    ?? (() => {
+    let bestEntry = entries[0]!;
+    let bestDy = Math.abs(bestEntry.cy - pt.y);
+    for (const e of entries.slice(1)) {
+      const d = Math.abs(e.cy - pt.y);
+      if (d < bestDy) {
+        bestDy = d;
+        bestEntry = e;
+      }
+    }
+    const head = bestEntry.note.getNoteheadSVGs?.()?.[0] as SVGGraphicsElement | undefined;
+    const bbox = head?.getBBox?.() ?? null;
+    const step = Math.max(0.5, Math.min(50, bbox ? bbox.height / 2 : 3));
+    return { top: bestEntry.cy - 4 * step, bottom: bestEntry.cy + 4 * step };
+  })();
+
   const staffStep = Math.max(0.5, ((staffBounds.bottom - staffBounds.top) / 4) / 2);
   const yMin = staffBounds.top - LEDGER_EXTRA * staffStep;
   const yMax = staffBounds.bottom + LEDGER_EXTRA * staffStep;
+  if (pt.y < yMin || pt.y > yMax) return null;
   const filtered = entries.filter((e) => e.cy >= yMin && e.cy <= yMax);
   if (filtered.length === 0) return null;
 
