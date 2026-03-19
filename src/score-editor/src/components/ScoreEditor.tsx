@@ -3,8 +3,6 @@ import {
   clearAllNoteHighlights,
   clearNoteHighlight,
   findClickedNote,
-  findNearestBeatOnStaff,
-  getSelectedNoteLocator,
   highlightNoteByLocator,
 } from '../helpers/noteSelection';
 import type { GraphicNote } from '../models/osmd';
@@ -19,12 +17,21 @@ import {
 } from '../helpers/selectionStore';
 import { historyClearApplying, historyIsApplying, historyRecord, historyReset } from '../services/historyService';
 import { musicXmlToString } from '../helpers/musicXmlHelper';
-import { noteDragPointerCancel, noteDragPointerDown, noteDragPointerMove, noteDragPointerUp, type NoteDragState } from '../helpers/noteDragHelpers';
+import type { NoteDragState } from '../helpers/noteDragHelpers';
 import { TopPanel } from './TopPanel';
 import './ScoreEditor.css';
 import type { EditMode } from './Tools/EditModeTools';
-import { eraseNoteAtLocator } from '../helpers/noteEraseHelpers';
-import { addNoteAtHoveredBeat } from '../helpers/noteDrawHelpers';
+import {
+  drawModeCancel,
+  drawModePointerDown,
+  drawModePointerMove,
+  eraseModePointerDown,
+  eraseModePointerMove,
+  selectModeCancel,
+  selectModePointerDown,
+  selectModePointerMove,
+  selectModePointerUp,
+} from '../helpers/editModePointerHelpers';
 
 // OSMD: use interface because the package's UMD bundle export doesn't match its .d.ts
 interface IOSMDInstance {
@@ -55,31 +62,6 @@ async function createOsmd(container: HTMLElement): Promise<IOSMDInstance> {
     ?? (OSMD as { default?: { OpenSheetMusicDisplay?: new (c: HTMLElement, o?: object) => IOSMDInstance } }).default?.OpenSheetMusicDisplay
     ?? (OSMD as unknown as new (c: HTMLElement, o?: object) => IOSMDInstance);
   return new (Ctor as new (c: HTMLElement, o?: object) => IOSMDInstance)(container, { autoResize: true, drawTitle: true });
-}
-
-/**
- * Finds the top and bottom Y (SVG units) of the five staff lines near the given X/Y.
- */
-function guessStaffBounds(svg: SVGSVGElement, x: number, nearY: number): { top: number; bottom: number } | null {
-  const candidates: Array<{ y: number }> = [];
-  const els = svg.querySelectorAll('path, line');
-  for (const el of els) {
-    const r = (el as SVGGraphicsElement).getBBox?.();
-    if (!r) continue;
-    if (r.width < 80) continue;
-    if (r.height > 3) continue;
-    if (x < r.x - 5 || x > r.x + r.width + 5) continue;
-    const cy = r.y + r.height / 2;
-    if (Math.abs(cy - nearY) > 300) continue;
-    candidates.push({ y: cy });
-  }
-  if (candidates.length < 5) return null;
-  candidates.sort((a, b) => Math.abs(a.y - nearY) - Math.abs(b.y - nearY));
-  const nearest5 = candidates.slice(0, 5).map((c) => c.y);
-  const top = Math.min(...nearest5);
-  const bottom = Math.max(...nearest5);
-  if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom <= top) return null;
-  return { top, bottom };
 }
 
 export function ScoreEditor() {
@@ -260,19 +242,21 @@ export function ScoreEditor() {
       if (!measureList) return;
 
       if (editMode === 'erase') {
-        const clicked = findClickedNote(measureList, e.clientX, e.clientY, e.target as Node);
-        if (!clicked?.sourceNote) return;
-        if ((clicked.sourceNote as any)?.isRest?.()) return;
-        if (!musicDoc) return;
-        const locator = getSelectedNoteLocator(measureList as any, clicked.sourceNote as any);
-        if (!locator) return;
-        const next = eraseNoteAtLocator(musicDoc, locator);
-        if (!next) return;
-        hoverEraseNoteRef.current = null;
-        selectedNoteRef.current = null;
-        selectionStoreSetSelectedNote(null);
-        selectionStoreSetPendingLocator(null);
-        applyDocChange(next);
+        const handled = eraseModePointerDown({
+          measureList: measureList as any,
+          clientX: e.clientX,
+          clientY: e.clientY,
+          target: e.target as Node,
+          musicDoc,
+          applyDocChange,
+          setSelectedNote: (n) => {
+            selectedNoteRef.current = n;
+            selectionStoreSetSelectedNote(n);
+          },
+          setPendingLocator: (loc) => selectionStoreSetPendingLocator(loc as any),
+          clearHover: () => { hoverEraseNoteRef.current = null; },
+        });
+        if (!handled) return;
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -281,39 +265,31 @@ export function ScoreEditor() {
       if (editMode === 'draw') {
         const svg = scroller?.querySelector?.('svg') as SVGSVGElement | null;
         if (!svg) return;
-        const anchor = findNearestBeatOnStaff(measureList as any, svg, e.clientX, e.clientY);
-        if (!anchor) return;
-        if (!musicDoc) return;
-        const ctm = svg.getScreenCTM?.();
-        if (!ctm) return;
-        const inv = ctm.inverse();
-        const rawPt = (typeof (globalThis as any).DOMPoint === 'function')
-          ? new (globalThis as any).DOMPoint(e.clientX, e.clientY).matrixTransform(inv)
-          : (() => {
-              const p = svg.createSVGPoint();
-              p.x = e.clientX;
-              p.y = e.clientY;
-              return p.matrixTransform(inv);
-            })();
-        const pt = { x: rawPt.x, y: rawPt.y };
-        const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, Math.round(n)));
-        const steps = clamp(-(pt.y - anchor.cy) / anchor.staffStep, -48, 48);
-        const res = addNoteAtHoveredBeat(musicDoc, anchor.locator, steps, createDuration.id, createDuration.dots);
-        if (!res) return;
-        selectedNoteRef.current = null;
-        selectionStoreSetSelectedNote(null);
-        selectionStoreSetPendingLocator(res.pendingLocator);
-        applyDocChange(res.doc);
+        const handled = drawModePointerDown({
+          measureList: measureList as any,
+          svg,
+          clientX: e.clientX,
+          clientY: e.clientY,
+          musicDoc,
+          createDuration,
+          applyDocChange,
+          setSelectedNote: (n) => {
+            selectedNoteRef.current = n;
+            selectionStoreSetSelectedNote(n);
+          },
+          setPendingLocator: (loc) => selectionStoreSetPendingLocator(loc as any),
+        });
+        if (!handled) return;
         e.preventDefault();
         e.stopPropagation();
         return;
       }
 
-      const drag = noteDragPointerDown({
+      const drag = selectModePointerDown({
         measureList: measureList as any,
         clientX: e.clientX,
         clientY: e.clientY,
-        fallbackTarget: e.target as Node,
+        target: e.target as Node,
         pointerId: e.pointerId,
         button: e.button,
         prevSelectedNote: selectedNoteRef.current,
@@ -342,14 +318,15 @@ export function ScoreEditor() {
         if (!osmd || !scroller) return;
         const measureList = getMeasureList(osmd);
         if (!measureList) return;
-        const hovered = findClickedNote(measureList, e.clientX, e.clientY, e.target as Node);
-        if (hovered === hoverEraseNoteRef.current) return;
-        clearNoteHighlight(hoverEraseNoteRef.current);
-        hoverEraseNoteRef.current = hovered;
-        if (hovered?.sourceNote && !(hovered.sourceNote as any)?.isRest?.()) {
-          hovered.sourceNote.noteheadColor = '#c00';
-        }
-        osmd.render();
+        eraseModePointerMove({
+          measureList: measureList as any,
+          clientX: e.clientX,
+          clientY: e.clientY,
+          target: e.target as Node,
+          osmdRender: () => osmd.render(),
+          getHover: () => hoverEraseNoteRef.current,
+          setHover: (n) => { hoverEraseNoteRef.current = n; },
+        });
         e.preventDefault();
         return;
       }
@@ -361,97 +338,22 @@ export function ScoreEditor() {
         if (!measureList) return;
         const svg = scroller.querySelector('svg') as SVGSVGElement | null;
         if (!svg) return;
-        const anchor = findNearestBeatOnStaff(measureList as any, svg, e.clientX, e.clientY);
-        if (!anchor) {
-          const existing = drawPreviewRef.current;
-          if (existing) {
-            existing.g.parentNode?.removeChild(existing.g);
-            drawPreviewRef.current = null;
-            drawAnchorRef.current = null;
-          }
-          return;
-        }
-        const ctm = svg.getScreenCTM?.();
-        if (!ctm) return;
-        const inv = ctm.inverse();
-        const rawPt = (typeof (globalThis as any).DOMPoint === 'function')
-          ? new (globalThis as any).DOMPoint(e.clientX, e.clientY).matrixTransform(inv)
-          : (() => {
-              const p = svg.createSVGPoint();
-              p.x = e.clientX;
-              p.y = e.clientY;
-              return p.matrixTransform(inv);
-            })();
-        const pt = { x: rawPt.x, y: rawPt.y };
-
-        const { cx, cy: cy0, staffStep: staffStepFromAnchor, staffBounds: staffBoundsFromAnchor, locator } = anchor;
-        const guessed = guessStaffBounds(svg, cx, cy0);
-        const staffBounds = guessed ?? staffBoundsFromAnchor;
-        const staffStep =
-          staffBounds
-            ? Math.max(0.5, ((staffBounds.bottom - staffBounds.top) / 4) / 2)
-            : staffStepFromAnchor;
-        const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, Math.round(n)));
-        const steps = clamp(-(pt.y - cy0) / staffStep, -48, 48);
-        const y = cy0 - steps * staffStep;
-        drawAnchorRef.current = { locator, steps, svg };
-        const drawPreviewRx = 6.5;
-        const drawPreviewRy = 4.2;
-        const drawPreviewLedgerHalf = 11;
-        const existing = drawPreviewRef.current;
-        if (!existing || existing.svg !== svg) {
-          if (existing) existing.g.parentNode?.removeChild(existing.g);
-          const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-          g.setAttribute('data-hf-draw-preview', '1');
-          svg.appendChild(g);
-          drawPreviewRef.current = { svg, g };
-        }
-        const g = drawPreviewRef.current!.g;
-        while (g.firstChild) g.removeChild(g.firstChild);
-        const ns = 'http://www.w3.org/2000/svg';
-        const headGroup = document.createElementNS(ns, 'g');
-        headGroup.setAttribute('transform', `rotate(-25, ${cx}, ${y})`);
-        const ell = document.createElementNS(ns, 'ellipse');
-        ell.setAttribute('cx', String(cx));
-        ell.setAttribute('cy', String(y));
-        ell.setAttribute('rx', String(drawPreviewRx));
-        ell.setAttribute('ry', String(drawPreviewRy));
-        ell.setAttribute('fill', '#c00');
-        headGroup.appendChild(ell);
-        g.appendChild(headGroup);
-
-        const topY = staffBounds?.top ?? (cy0 - 4 * staffStep);
-        const bottomY = staffBounds?.bottom ?? (cy0 + 4 * staffStep);
-        const beyondTopSteps = Math.max(0, Math.ceil((topY - y) / staffStep));
-        const beyondBottomSteps = Math.max(0, Math.ceil((y - bottomY) / staffStep));
-        const ys: number[] = [];
-        const step2 = staffStep * 2;
-        if (beyondTopSteps >= 2) {
-          const lines = Math.floor(beyondTopSteps / 2);
-          for (let i = 1; i <= lines; i++) ys.push(topY - i * step2);
-        } else if (beyondBottomSteps >= 2) {
-          const lines = Math.floor(beyondBottomSteps / 2);
-          for (let i = 1; i <= lines; i++) ys.push(bottomY + i * step2);
-        }
-        const halfWidth = drawPreviewLedgerHalf;
-        for (const ly of ys) {
-          const line = document.createElementNS(ns, 'line');
-          line.setAttribute('x1', String(cx - halfWidth));
-          line.setAttribute('x2', String(cx + halfWidth));
-          line.setAttribute('y1', String(ly));
-          line.setAttribute('y2', String(ly));
-          line.setAttribute('stroke', '#c00');
-          line.setAttribute('stroke-width', '1');
-          line.setAttribute('stroke-linecap', 'round');
-          g.appendChild(line);
-        }
+        drawModePointerMove({
+          measureList: measureList as any,
+          svg,
+          clientX: e.clientX,
+          clientY: e.clientY,
+          drawPreview: drawPreviewRef.current,
+          setDrawPreview: (v) => { drawPreviewRef.current = v; },
+          setDrawAnchor: (v) => { drawAnchorRef.current = v; },
+        });
         e.preventDefault();
         return;
       }
       if (!drag?.active) return;
       if (e.pointerId !== drag.pointerId) return;
 
-      noteDragPointerMove(drag, e.clientX, e.clientY, zoom);
+      selectModePointerMove(drag, e.clientX, e.clientY, zoom);
       e.preventDefault();
       e.stopPropagation();
     },
@@ -470,7 +372,12 @@ export function ScoreEditor() {
         selectedNoteRef.current = null;
         selectionStoreSetSelectedNote(null);
       }
-      noteDragPointerUp(drag, musicDoc, selectionStoreSetPendingLocator, (doc) => applyDocChange(doc));
+      selectModePointerUp({
+        drag,
+        musicDoc,
+        setPendingLocator: (loc) => selectionStoreSetPendingLocator(loc as any),
+        setDoc: (doc) => applyDocChange(doc),
+      });
       dragRef.current = null;
       e.preventDefault();
       e.stopPropagation();
@@ -491,15 +398,16 @@ export function ScoreEditor() {
         return;
       }
       if (editMode === 'draw') {
-        const prev = drawPreviewRef.current;
-        if (prev) prev.g.parentNode?.removeChild(prev.g);
-        drawPreviewRef.current = null;
-        drawAnchorRef.current = null;
+        drawModeCancel({
+          drawPreview: drawPreviewRef.current,
+          setDrawPreview: (v) => { drawPreviewRef.current = v; },
+          setDrawAnchor: (v) => { drawAnchorRef.current = v; },
+        });
         return;
       }
       if (!drag?.active) return;
       if (e.pointerId !== drag.pointerId) return;
-      noteDragPointerCancel(drag);
+      selectModeCancel(drag);
       dragRef.current = null;
     },
     [editMode]
