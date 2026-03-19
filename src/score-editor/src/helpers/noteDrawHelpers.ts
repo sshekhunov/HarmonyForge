@@ -129,8 +129,7 @@ export function addNoteAtHoveredBeat(
   const base = root;
   const next = makeNote(base, anchorLocator.staffNumber, anchorLocator.voice, nextPitch, root.duration, root.type ?? type, root.dots, true);
   measure.elements.splice(insertAt, 0, next);
-  const cleared = clearAccidental(doc, anchorLocator) ?? doc;
   const pendingLocator: NoteLocator = { ...anchorLocator, indexInMeasure: anchorLocator.indexInMeasure + 1, target: 'note' };
-  return { doc: cleared, pendingLocator };
+  return { doc, pendingLocator };
 }
 
